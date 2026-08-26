@@ -1,0 +1,61 @@
+edyxlib/
+├── README.md                   # top-level map: what lives where, dependency rules
+├── CONTRIBUTING.md             # promotion policy (adapters, analysis), versioning convention
+│
+├── edyx/
+│   ├── pyproject.toml          # name="edyx" 
+|   ├── uv.lock                 # per package lockfile
+│   ├── src/
+│   │   └── edyx/
+│   │       ├── __init__.py
+│   │       ├── io.py           # read write various filetyles
+│   │       ├── units.py        # unit conversions
+│   │       ├── tana.py         # ta analysis
+│   │       ├── fana.py         # flups analysis
+│   │       ├── models.py       # model functions (fits, etc.)
+│   │       ├── utils.py        # generic utilities: between, argnear ...
+│   │       ├── ...
+│   │       ├── plot/           # plotting utilities and convenience, stylesheets.
+│   │       │   ├── __init__.py
+│   │       │   ├── plot.py
+│   │       │   ├── report.mplstyle
+│   │       │   ├── acs.mplstyle
+│   │       │   └── ...
+│   │       └── scripts/        # for CLI commands
+│   │           ├── __init__.py
+│   │           ├── collect_asc.py
+│   │           └── spectra_fit.py # needs to be renamed
+│   ├── build/ # or whatever boilerplate is needed, really
+│   ├── tests/
+│   └── examples/  # here go notebooks.
+│
+├── pyspan/
+│   ├── pyproject.toml          # depends on edyx, ipywidgets, ...
+|   ├── uv.lock                 # per package lockfile
+│   ├── src/
+│   │   └── pyspan/
+│   │       ├── __init__.py
+│   │       └── ...
+│   ├── tests/
+│   └── examples/
+│
+├── theseus/                    # one dir per GUI, repeated
+│   ├── pyproject.toml          # depends on edyx, eventually pistage, ...
+|   ├── uv.lock                 # per package lockfile
+│   ├── src/
+│   │   └── theseus/
+│   │       ├── __init__.py
+│   │       └── ...
+│   └── tests/
+│
+├── pistage/                    # shared instrument (example)
+│   ├── pyproject.toml          # depends on edyx (+ shared-instrument if needed)
+|   ├── uv.lock                 # per package lockfile
+│   ├── src/
+│   │   └── pistage/
+│   └── tests/
+│
+├── some_future_flups_GUI/      # eventually, FLUPS GUI. similar to theseus
+├── pigui??/                    # minimal GUI for PI stage.
+
+└── docs/                       # or a pointer into the lab wiki instead of duplicating

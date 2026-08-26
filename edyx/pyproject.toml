@@ -1,0 +1,36 @@
+[project]
+name = "edyx"
+version = "0.1.0"
+description = "Core data I/O, analysis, and plotting utilities for the lab"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Samuel Palato", email = "7659022+spalato@users.noreply.github.com" },
+]
+license = { file = "../LICENSE.txt" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "lmfit",
+    "typer",
+    # TODO: add packages that are part of our "standard distribution""
+]
+
+# [project.scripts] # command line tools.
+# spectra_fit = "edyx.scripts.spectra_fit:app"
+
+[project.urls]
+Repository = "https://github.com/spalato/edyxlib"
+
+[build-system]
+requires = ["uv_build>=0.5,<0.6"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
