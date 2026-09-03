@@ -1,0 +1,36 @@
+:rem Test VB comments
+'test comment
+// comment
+
+:rem test if we have the VB fix function
+print("Fix(3.3)"; Fix(3.3))
+print("Cint(3.3)"; Cint(3.3))
+
+:rem otherwise...
+ff = 3.3
+gg = 0.0
+gosub .fix
+print(".fix"; ff; gg)
+
+ff = -3.3
+gg = 0.0
+gosub .fix
+print(".fix"; ff; gg)
+
+
+
+.fix 
+rem ******************************************************************************************
+rem a number on  ff is clipped & the corresponding integer placed on gg 
+rem //SP:: this seems to be a way to round delay to motorsteps (integers)
+rem ------------------------------------------------------------------------------------------
+rem f$=str$(ff)
+rem a =instr(f$,".")
+rem if a then
+rem   name$=left$(f$,a-1)
+rem else
+rem name$=f$
+rem endif
+rem gg=val(name$)
+gg=ff-mod(ff,1)
+return

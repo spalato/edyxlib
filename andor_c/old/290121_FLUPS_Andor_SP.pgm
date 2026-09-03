@@ -1,0 +1,791 @@
+rem ******************************************************************************************
+rem *  FLUPS 00.1																			 *
+rem *  26/04/2007																			 *
+rem *	for ANDOR Newton, with direction of delay changed                                    *
+rem *  03/02/2021 FLUPS v1.0                                                                 *
+rem *   reorganized stage calls in a futile attempt at debugging. The problem lied in AndorSolis.*
+rem *  13/12/2023 FLUPS v1.1                                                                 *
+rem *   using reversed stage position (now delaying the gate)                                *
+rem ==========================================================================================
+rem The following parameters define, at any time, the status of the measurement.
+rem They are described and initialized here.
+rem ==========================================================================================
+print("Start of program")
+pflag=1							:rem flags printing
+debugstage=0                 :rem flag debugging of comport
+rem .FILE parameters
+nflag=0                						:rem flags that filename has been properly entered
+name$=""							:rem filename without prefix (m or b) or extention
+								:rem (not really needed here; just to complete the list...)
+cmt$="no comment"						:rem comment
+longcmt$="Date Time ..."					:rem comment with preceeding date & time
+rem .DELAY parameters
+tzi=0								:rem timezero-indicator (needed for 1st cycle only)
+dir=-1                              :rem stage direction: -1-> delaying gate, neg delay to large positions (away from motor).
+timeperstep=dir*2/3000				:rem time per step in ps
+actpos=150000						:rem actual position in motorsteps; is usually overwritten
+zeropos=150000						:rem position for which timezero is defined, in motorsteps
+delaytime=(actpos-zeropos)*timeperstep		:rem delaytime in ps
+stepwidth=100								:rem stepwidth in fs
+incrementpos=stepwidth/(1000*timeperstep)	:rem increment of position during scan	
+negdelay=1.0								:rem range (>=0 !) before timezero in ps
+negdelaypos=zeropos-negdelay/timeperstep	:rem start position for scan
+maxdelay=1.0								:rem range     after  timezero in ps
+maxdelaypos=zeropos+maxdelay/timeperstep		:rem end   position for scan
+ff=(maxdelaypos-negdelaypos+1)/incrementpos		:rem number of measurements in a scan
+gosub .fix
+nmeas=gg+1
+expotime=0.10								:rem exposure time in s
+rem .GOTO parameters
+gflag=0   									:rem flags that  gototime has been properly entered
+gotopos=0									:rem goto position
+gototime=0									:rem goto time, relative to time zero
+gototimesteps=0								:rem number of steps corresponding to gototime
+rem .MEASURE parameters
+mflag=0										:rem flags that a measurement has been performed
+bgflag=0									:rem flags that background has been stored
+rem .TEST and .PHOTOMETRICS parameters
+ntest=50									:rem number of test measurements
+ntest3=10
+rem ==========================================================================================
+rem Initialize PI Intellistage M-521.5iM
+print("Connecting to stage")
+cprt=5
+handshake(cprt,0)
+baud(cprt,9600)
+terminator(0x0a)
+newline(0)
+cTP$="1TP"+chr$(10) :  cGL$="1GL"+chr$(10)  
+cSVfast$="1SV100000"+chr$(10)
+cSVslow$="1SV20000"+chr$(10)
+rem
+targetpos=-999999						:rem move extremely far end until limit
+print("Finding start position...")
+
+gosub .MoveAbsoluteSlow
+
+
+gosub .DefineHome							:rem define home at left limit
+key("Home has been defined......Press enter......")
+targetpos=150000							:rem go 100 ps towards right
+gosub .MoveAbsoluteSlow						
+key("After having moved 100 ps to the right......                    Press enter......")
+rem ##################
+print("I am here!; vTP=";vTP;"   cTP$="; cTP$)
+rem end
+rem ##################
+rem
+rem Top level
+rem
+idummy=1
+while (idummy==1)  
+	gosub .main
+	if (pflag==1) then
+		print("**  STATUS *************************************************************************")
+		print("tzi=";tzi;",     zeropos=";zeropos;",      actpos=";actpos;",      delaytime =";delaytime;" ps")
+		print("stepwidth=";stepwidth;" fs,      incrementpos=";incrementpos)
+		print("      negdelay=";negdelay;" ps,      negdelaypos=";negdelaypos;",      maxdelay=";maxdelay;" ps,      maxdelaypos=";maxdelaypos)
+		print("      nmeas=";nmeas;",      expotime="; expotime;" s")
+		print("gototimesteps=";gototimesteps;",      gototime=";gototime;" ps")
+		print("fname=";fname$;",      longcmt=";longcmt$)
+	endif
+wend
+rem
+rem ******************************************************************************************
+.main
+rem ******************************************************************************************
+rem selects the submenu
+rem ------------------------------------------------------------------------------------------
+mi=0
+while mi==0
+input(" * Main *    delay ";delaytime;" ps   at position "; actpos;"           Del, Go, Tst, Meas, Scan, Phot, File, Exit ?",answ$) 
+	if (asc(answ$)==68) || (asc(answ$)==100) then 
+		gosub .delay 
+		mi=1
+	endif
+	if (asc(answ$)==71) || (asc(answ$)==103) then 
+		gosub .goto
+		mi=1
+	endif
+	if (asc(answ$)==84) || (asc(answ$)==116) then 
+		gosub .test
+		mi=1
+	endif
+	if (asc(answ$)==77) || (asc(answ$)==109) then 
+		gosub .measure
+		mi=1
+	endif
+	if (asc(answ$)==70) || (asc(answ$)==102) then 
+		gosub .file
+		mi=1
+	endif
+	if (asc(answ$)==69) || (asc(answ$)==101) then 
+		gosub .exit
+		mi=1
+	endif
+	if (asc(answ$)==83) || (asc(answ$)==115) then 
+		gosub .measure2								:rem scan      a preprogrammed delay range
+		mi=1
+	endif
+	if (asc(answ$)==80) || (asc(answ$)==112) then 
+		gosub .measure3								:rem photometrics: background & last delay
+		mi=1
+	endif
+wend
+return
+rem
+rem ******************************************************************************************
+.delay
+rem ******************************************************************************************
+rem inputs, checks, and updates
+rem zeropos, (if that is changed:) delaytime,stepwidth,negdelay,maxdelay
+rem ------------------------------------------------------------------------------------------
+gosub .TellPosition
+actpos=vTP : delaytime=(actpos-zeropos)*timeperstep
+input(" ***** Delay *****    delay ";delaytime;" ps at position "; actpos;"             Set timezero here (0 or 1)?",answ)
+if answ==0 then tzi=0   :rem tzi flag: the actual position becomes new home
+if answ<>0 then tzi=1
+if tzi==1 then
+	shiftpos=actpos-zeropos		
+	maxdelaypos=maxdelaypos+shiftpos
+	negdelaypos=negdelaypos+shiftpos
+	zeropos=actpos: delaytime=0.0 
+	gotopos=zeropos+gototimesteps
+endif 
+rem
+answ=0
+input("Step width          (fs)   ";stepwidth;"  ",answ)
+if answ<>0 then 
+	if abs(answ)<3 then answ=3
+	stepwidth=abs(answ)
+	if (3<=stepwidth) && (stepwidth<10) then
+		negdelay=0.21:maxdelay=2.3
+		negdelaypos=zeropos-negdelay/timeperstep
+		maxdelaypos=zeropos+maxdelay/timeperstep	
+	endif
+	if (10<=stepwidth) && (stepwidth<30) then
+		negdelay=0.50:maxdelay=6.5
+		negdelaypos=zeropos-negdelay/timeperstep
+		maxdelaypos=zeropos+maxdelay/timeperstep			
+	endif	 
+	if (30<=stepwidth) && (stepwidth<50) then
+		negdelay=1.80:maxdelay=22.0
+		negdelaypos=zeropos-negdelay/timeperstep
+		maxdelaypos=zeropos+maxdelay/timeperstep			
+	endif
+	if (50<=stepwidth) && (stepwidth<100) then
+		negdelay=2.00:maxdelay=34.0
+		negdelaypos=zeropos-negdelay/timeperstep
+		maxdelaypos=zeropos+maxdelay/timeperstep			
+	endif	
+	if (100<=stepwidth) && (stepwidth<200) then
+		negdelay=4.00:maxdelay=70.0
+		negdelaypos=zeropos-negdelay/timeperstep
+		maxdelaypos=zeropos+maxdelay/timeperstep			
+	endif
+	if (200<=stepwidth) && (stepwidth<500) then
+		negdelay=4.00:maxdelay=126.0
+		negdelaypos=zeropos-negdelay/timeperstep
+		maxdelaypos=zeropos+maxdelay/timeperstep			
+	endif
+	ff=stepwidth/(1000*timeperstep)
+	gosub .fix
+	incrementpos=gg
+endif
+rem
+answ=0
+input("Negative range  (ps)   ";negdelay;"  ",answ)
+if answ<>0 then 
+	negdelay=abs(answ)
+	negdelaypos=zeropos-negdelay/timeperstep	:rem start position for scan
+endif
+rem
+answ=0
+input("Maximum  delay (ps)   ";maxdelay;"  ",answ)
+if answ<>0 then 
+	maxdelay=abs(answ)
+	maxdelaypos=zeropos+maxdelay/timeperstep	:rem end   position for scan
+endif
+rem
+	ff=(maxdelaypos-negdelaypos+1)/incrementpos	:rem number of measurements in a scan
+	gosub .fix
+	nmeas=gg+1
+rem
+answ=0
+input("Exposure time   (s)   ";expotime;"  ",answ)
+if answ<>0 then expotime=abs(answ)
+return
+rem
+rem ******************************************************************************************
+.file
+rem ******************************************************************************************
+rem Inputs filename, saves spectra #100 and #99
+rem ------------------------------------------------------------------------------------------
+mit$="m"
+bit$="b"
+ext$=".sif"
+x$=date$()
+day$=left$(x$,2)+mid$(x$,4,2)+right$(x$,2)
+rem
+if (mflag==0) then
+	print("no data available yet ...")
+else
+rem
+	if (nflag==0) then
+		name$=""
+		while (len(name$)==0)
+			input("  ***** File *****                                                                        Enter filename without .ext ",name$)
+rem			if (len(name$)==0) then beep()
+		wend
+			input("  ***** File *****                                                                        Comment = ";cmt$;"; overwrite...", answ$) 
+			if (len(answ$)<>0) then cmt$=answ$
+			fname$=mit$+name$+ext$ : bname$=bit$+name$+ext$ : nflag=1
+	else
+		input("  ***** File *****                                                                            Enter filename without .ext   (";name$;")   ",answ$)
+			if (len(answ$)==0) then
+			fname$=mit$+name$+ext$ : bname$=bit$+name$+ext$
+			else 
+			name$=answ$ : fname$=mit$+name$+ext$ : bname$=bit$+name$+ext$
+			endif
+		input("  ***** File *****                                                                            Comment = ";cmt$;"; overwrite...", answ$) 
+			if (len(answ$)<>0) then cmt$=answ$
+			fname$=mit$+name$+ext$ : bname$=bit$+name$+ext$
+	endif
+	print("Now saving signal and background to "; fname$;" and ";bname$)
+	dt$= date$(): tm$=time$()
+	longcmt$=dt$+" "+tm$+" "+cmt$
+	infotext(#100,longcmt$) : infotext(#99,longcmt$) 
+	save(#100,fname$)
+	save(#99,bname$)
+rem
+endif
+return
+rem ******************************************************************************************
+.exit
+rem ******************************************************************************************
+input("  ***** Exit *****                                                                               enter 1 if you are sure... ", answ)
+if (answ==1) then 
+	minimizewindow(#100): minimizewindow(#99) : minimizewindow(#0)
+	end
+endif
+return
+
+rem ******************************************************************************************
+.StageWrite
+rem ******************************************************************************************
+rem writes `stage_msg$` to comport, and puts the reply in `stage_echo$`
+rem ------------------------------------------------------------------------------------------
+if (debugstage) then print(".StageWrite stage_msg$: ";stage_msg$)
+comwrite(cprt, stage_msg$)
+delay(50)
+comread(cprt, stage_echo$)
+delay(50)
+if (debugstage) then print(".StageWrite stage_echo$: ";stage_echo$)
+return
+
+rem ******************************************************************************************
+.StageQuery
+rem ******************************************************************************************
+rem write query `stage_msg$` to comport and puts the reply in `stage_resp$`
+rem ------------------------------------------------------------------------------------------
+gosub .StageWrite
+comread(cprt, stage_resp$)
+delay(50)
+if (debugstage) then print(".StageQuery stage_resp$: ";stage_resp$)
+return
+
+rem ******************************************************************************************
+.TellPosition
+rem ******************************************************************************************
+rem updates vTP with current position
+rem ------------------------------------------------------------------------------------------
+if (debugstage) then print(".TellPosition start")
+stage_msg$=cTP$
+gosub .StageQuery
+vTP = val(right$(stage_resp$,len(stage_resp$)-4))
+if (debugstage) then print(".TellPosition vTP: ";vTP)
+return
+
+rem ******************************************************************************************
+.SenseLimit
+rem ******************************************************************************************
+rem if (debugstage) then print(".SenseLimit start")
+rem stage_msg$="1GL"+chr$(10)
+rem gosub .StageQuery
+rem vGL=val(right$(stage_resp$,len(stage_resp$)-4))
+rem if (debugstage) then print(".SenseLimit vGL: ";vGL)
+return
+
+rem ******************************************************************************************
+.SetVelocityFast
+rem ******************************************************************************************
+if (debugstage) then print(".SetVelocityFast start")
+stage_msg$=cSVfast$
+gosub .StageWrite
+return
+
+rem ******************************************************************************************
+.SetVelocitySlow
+rem ******************************************************************************************
+if (debugstage) then print(".SetVelocitySlow start")
+stage_msg$=cSVslow$
+gosub .StageWrite
+return
+
+rem ******************************************************************************************
+.MoveTo
+rem ******************************************************************************************
+rem Writes message `cMA$`
+rem ------------------------------------------------------------------------------------------
+if (debugstage) then print(".MoveTo start")
+stage_msg$=cMA$
+gosub .StageWrite
+return
+
+rem ******************************************************************************************
+.MoveAbsoluteFast
+rem ******************************************************************************************
+rem moves stage fast to targetpos 
+rem ------------------------------------------------------------------------------------------
+if (debugstage) then print(".MoveAbsoluteFast start")
+if ((targetpos-mod(targetpos,1000000))/1000000)>0 then
+ 
+ cMA$="1MA"+str$((targetpos-mod(targetpos,10))/10)+str$(mod(targetpos,10))+chr$(10)
+ else 
+   cMA$="1MA"+str$(targetpos)+chr$(10)
+endif
+print("targetpos",targetpos, cMA$)
+gosub .TellPosition									:rem get the position directly after startup
+vTPprev=vTP	
+gosub .SetVelocityFast
+gosub .MoveTo
+tpflag=0											:rem wait until stage has come to rest
+waitidx = 0
+while tpflag==0
+	gosub .TellPosition
+	if (debugstage) then print(".MoveAbsoluteFast waitidx: "; waitidx)
+	if (debugstage) then print(".MoveAbsoluteFast vTPprev: "; vTPprev)
+	if (debugstage) then print(".MoveAbsoluteFast vTP    : "; vTP)
+	if (vTP<>vTPprev) then
+		vTPprev=vTP
+	else
+		tpflag=1
+	endif
+	delay(100)
+	waitidx = waitidx + 1
+wend
+if (vTP==targetpos) then
+	if (pflag==1) then print("Stage now at target position ";targetpos)
+	actpos=vTP : delaytime=(actpos-zeropos)*timeperstep
+else
+	if (pflag==1) then print("Stage stopped moving at position ";vTP)
+	gosub .SenseLimit
+	if (pflag==1) then print("Limit status is ";vGL)
+	actpos=vTP : delaytime=(actpos-zeropos)*timeperstep
+endif	
+return
+rem ******************************************************************************************
+.MoveAbsoluteSlow
+rem ******************************************************************************************
+rem moves stage slow to targetpos 
+rem ------------------------------------------------------------------------------------------
+if (debugstage) then print(".MoveAbsoluteSlow start")
+if ((targetpos-mod(targetpos,1000000))/1000000)>0 then
+ 
+ cMA$="1MA"+str$((targetpos-mod(targetpos,10))/10)+str$(mod(targetpos,10))+chr$(10)
+ else 
+   cMA$="1MA"+str$(targetpos)+chr$(10)
+endif
+gosub .TellPosition									:rem get the position directly after startup
+vTPprev=vTP
+gosub .SetVelocitySlow
+gosub .MoveTo
+tpflag=0											:rem wait until stage has come to rest
+waitidx = 0
+while tpflag==0
+	gosub .TellPosition
+	if (debugstage) then print(".MoveAbsoluteSlow waitidx: "; waitidx)
+	if (debugstage) then print(".MoveAbsoluteSlow vTPprev: "; vTPprev)
+	if (debugstage) then print(".MoveAbsoluteSlow vTP    : "; vTP)
+	if (vTP<>vTPprev) then
+		vTPprev=vTP
+	else
+		tpflag=1
+	endif
+	delay(100)
+	waitidx = waitidx + 1
+wend
+if (vTP==targetpos) then
+	if (pflag==1) then print("Stage now at target position ";targetpos)
+	actpos=vTP : delaytime=(actpos-zeropos)*timeperstep
+else
+	if (pflag==1) then print("Stage stopped moving at position ";vTP)
+	gosub .SenseLimit
+	if (pflag==1) then print("Limit status is ";vGL)
+	actpos=vTP : delaytime=(actpos-zeropos)*timeperstep
+endif	
+return
+rem ******************************************************************************************
+.DefineHome
+rem ******************************************************************************************
+rem defines home on stage &  resets   zeropos, actpos
+rem ------------------------------------------------------------------------------------------
+if (debugstage) then print(".MoveAbsoluteSlow DefineHome")
+gosub .TellPosition
+print("  .DefineHome - initial position: "; vTP)
+stage_msg$="1DH"+chr$(10)
+gosub .StageWrite
+gosub .TellPosition
+print("  .DefineHome - final position: "; vTP)
+actpos=vTP
+return
+rem ******************************************************************************************
+.goto
+rem ******************************************************************************************
+rem inputs, checks, and updates    gototime & gotopos
+rem and moves there fast
+rem ------------------------------------------------------------------------------------------
+gosub .TellPosition									:rem get the position directly after startup
+actpos=vTP	
+delaytime=(actpos-zeropos)*timeperstep
+rem...
+gti=0
+while gti==0
+	input(" ***** Goto *****        delay ";delaytime;" ps at position ";actpos;"                           Enter desired delay (ps) or z to go home ";gototime;"  ",answ$)
+	if (asc(answ$)==122) || (asc(answ$)==90) then	:rem "z" was entered to go home
+		gotopos=zeropos : gototime=0
+		targetpos=gotopos
+rem		gosub .MoveAbsoluteFast
+		gosub .MoveAbsoluteSlow
+		gosub .TellPosition							:rem get the position directly after startup
+		actpos=vTP	
+		delaytime=(actpos-zeropos)*timeperstep
+		gti=1
+	else								
+		if (asc(answ$)==0) then						:rem 0 or return  was entered indicating no change									
+			targetpos=gotopos
+rem			gosub .MoveAbsoluteFast
+			gosub .MoveAbsoluteSlow
+			gosub .TellPosition						
+			actpos=vTP	
+			delaytime=(actpos-zeropos)*timeperstep
+			gti=1
+		else
+			aa=val(answ$)							:rem some number was entered ...
+			ff=aa/timeperstep						:rem ....possibly some broken number of steps
+			gosub .fix
+			gototimesteps=gg
+			xx=zeropos+gototimesteps
+			
+			Print("aa",aa," ff",ff, " gg", gg, "xx", xx, str$(xx))
+			if (0 <=xx) && (xx<=2000000)  then		:rem move is accepted :rem software limit on the positions
+				gotopos=xx		
+				gototime=gototimesteps*timeperstep	:rem correct gototime commensurate with steps
+				targetpos=xx
+				gosub .MoveAbsoluteFast
+				gosub .TellPosition					
+				actpos=vTP	
+				delaytime=(actpos-zeropos)*timeperstep
+				gti=1
+			else 
+				gti=0
+			endif									:rem retry input...
+		endif
+	endif
+wend 
+return
+rem ******************************************************************************************
+.fix 
+rem ******************************************************************************************
+rem a number on  ff is clipped & the corresponding integer placed on gg 
+rem   SP: rounds down. Handles negative numbers as needed.
+rem 3.3 -> 3
+rem 3.6 -> 3
+rem -3.3 -> -3
+rem -3.6 -> -3
+rem ------------------------------------------------------------------------------------------
+gg=ff-mod(ff,1)
+return
+
+
+rem ******************************************************************************************
+.measure
+rem ******************************************************************************************
+rem move to start position, measure background there, and scan the full delay range 
+rem ------------------------------------------------------------------------------------------
+rem Setup of the camera
+	setacquisitiontype(0)					:rem signal
+	setacquisitionmode(1)        			:rem single scan mode
+	setreadoutmode(0)            			:rem chose either Full Vertically Binned (FVB) spectra
+rem setsingletrack(190,20)               	:rem       or else single track binning
+	setdatatype(1)							:rem counts
+rem
+	create(#98,1600,1,5)					:rem 1600x, 1y dimensioned intermediate bg set of 5 items
+	create(#99,1600,1,1)            		:rem 1600x, 1y dimensioned background      set of 1 item
+	minimizewindow(#98)	
+	minimizewindow(#99)						:rem shrink window to icon
+	create(#100,1600,1,nmeas)				:rem 1600 x, 1 y dimensioned  signal    set of nmeas items
+	maximizewindow(#100)					:rem 
+	ScaleData(#100,-50,200)                 :rem scale at start from -50 to 200 counts
+	positioncursor(#100,800): cursxprev=800	:rem sets and remembers cursor x rem Starting position and background 
+	targetpos=negdelaypos					:rem move to the start position for the scan
+	gosub .MoveAbsoluteFast
+	print("Now at start position  ";actpos)
+	setexposuretime(0.021)					:rem for cleansing readout
+	run()									:rem cleansing readout
+	setexposuretime(expotime)
+rem
+	bgcounter=1
+	while bgcounter<=5						:rem background measurements
+		run()
+		#0[1]=0								:rem pixel 1 is set to 0
+		activekineticposition(#0,bgcounter)
+		#98{bgcounter}=#0
+		bgcounter=bgcounter+1
+		delay(200)
+	wend
+rem	
+	#99=(#98_sig{1}+#98_sig{2}+#98_sig{3}+#98_sig{4}+#98_sig{5})/5
+rem #99=smooth3(#99)                        :rem perform 9 point Savitsky-Golay smoothing on bg spectrum
+	bgflag=1			
+	topwindow(#100)				
+rem -------------------------------------------- scan ----------------------------------------
+pflag=0										:rem switches off report from MoveAbsolute...
+counter=1
+targetpos=negdelaypos-incrementpos			
+while (counter<=nmeas) && (delaytime <=	maxdelay)
+	targetpos=targetpos+incrementpos
+	gosub .MoveAbsoluteSlow
+	print(counter;"/";nmeas;" at ";actpos; " & ";delaytime;" ps")
+	infotext(#100,"/";nmeas;" at ";actpos; " & ";delaytime;" ps")
+	run()									:rem measurement at the present delay
+	#0[1]=delaytime							:rem place counter  onto pixel 1
+	#100{counter}=#0-#99					:rem subtract background and place item into dataset #100
+	activekineticposition(#100,counter)
+	gosub .meascursor
+	counter=counter+1
+wend
+	targetpos=zeropos
+	gosub .MoveAbsoluteFast
+	print("Now at zero position  ";actpos)
+mflag=1										:rem flags that measurement has been done
+return
+rem
+rem ******************************************************************************************
+.measure2									:rem = "scan"
+rem ******************************************************************************************
+rem move to fixed neg. delay, measure background there, and scan a preprogrammed delay range 
+rem ------------------------------------------------------------------------------------------
+rem Setup of the camera
+	setacquisitiontype(0)					:rem signal
+	setacquisitionmode(1)        			:rem single scan mode
+	setreadoutmode(0)            			:rem chose either Full Vertically Binned (FVB) spectra
+rem	setsingletrack(140,80)               	:rem       or else single track binning
+	setdatatype(1)							:rem counts
+rem
+	create(#98,1600,1,5)					:rem 1600x, 1y dimensioned intermediate bg set of 5 items
+	create(#99,1600,1,1)            		:rem 1600x, 1y dimensioned background      set of 1 item
+	minimizewindow(#98)	
+	minimizewindow(#99)						:rem shrink window to icon
+	create(#100,1600,1,260)					:rem 1600 x, 1 y dimensioned  signal    set of 260 items
+	maximizewindow(#100)					:rem 
+	ScaleData(#100,-50,200)                 :rem scale at start from -50 to 200 counts
+	positioncursor(#100,800): cursxprev=800	:rem sets and remembers cursor x rem Starting position and background 
+	
+	negdelay2=10
+	negdelaypos2=zeropos-negdelay2/timeperstep 		:rem start position for scan
+	targetpos=negdelaypos2					:rem move to the start position for the scan
+	gosub .MoveAbsoluteFast
+	print("Now at start position  ";actpos)
+	setexposuretime(0.021)					:rem for cleansing readout
+	run()									:rem cleansing readout
+	setexposuretime(expotime)
+rem
+	bgcounter=1
+	while bgcounter<=5						:rem background measurements
+		run()
+		#0[1]=0								:rem pixel 1 is set to 0
+		activekineticposition(#0,bgcounter)
+		#98{bgcounter}=#0
+		bgcounter=bgcounter+1
+		delay(200)
+	wend
+rem	
+	#99=(#98_sig{1}+#98_sig{2}+#98_sig{3}+#98_sig{4}+#98_sig{5})/5
+    #99=smooth3(#99)                        :rem perform 9 point Savitsky-Golay smoothing on bg spectrum
+	bgflag=1			
+	topwindow(#100)				
+rem -------------------------------------------- scan ----------------------------------------
+pflag=0										:rem switches off report from MoveAbsolute...
+counter=1
+incrementpos2=100/(1000*timeperstep)			:rem initial increment (in fs) of position during scan
+nmeas=260									:rem depends on programmed delay positions!
+
+negdelay2=5
+negdelaypos2=zeropos-negdelay2/timeperstep	:rem start position for scan
+targetpos=negdelaypos2-incrementpos2
+gosub .MoveAbsoluteFast
+
+while (counter<=nmeas) && (delaytime <= 62)
+	targetpos=targetpos+incrementpos2
+	gosub .MoveAbsoluteSlow
+	print(counter;"/";260;" at ";actpos; " & ";delaytime;" ps")
+	infotext(#100,"/";260;" at ";actpos; " & ";delaytime;" ps")
+	run()									:rem measurement at the present delay
+	#0[1]=delaytime							:rem place counter  onto pixel 1
+	#100{counter}=#0-#99					:rem subtract background and place item into dataset #100
+	activekineticposition(#100,counter)
+	gosub .meascursor
+	if (counter<=100) then
+		incrementpos2=100/(1000*timeperstep)
+	endif
+	if (counter<=175) && (counter>100) then
+		incrementpos2=200/(1000*timeperstep)
+	endif
+	if (counter<=259) && (counter>175) then
+		incrementpos2=500/(1000*timeperstep)
+	endif
+	counter=counter+1
+wend
+	targetpos=zeropos
+	gosub .MoveAbsoluteFast
+	print("Now at zero position  ";actpos)
+mflag=1										:rem flags that measurement has been done
+return 
+rem ******************************************************************************************
+.measure3									:rem = "photometrics"
+rem ******************************************************************************************
+rem move to start position, measure background, go to end position, make ntest3 measurements
+rem ------------------------------------------------------------------------------------------
+rem Setup of the camera
+	setacquisitiontype(0)					:rem signal
+	setacquisitionmode(1)        			:rem single scan mode
+	setreadoutmode(0)            			:rem chose either Full Vertically Binned (FVB) spectra
+rem	setsingletrack(140,80)               	:rem       or else single track binning
+	setdatatype(1)							:rem counts
+rem
+	create(#98,1600,1,5)					:rem 1600x, 1y dimensioned intermediate bg set of 5 items
+	create(#99,1600,1,1)            		:rem 1600x, 1y dimensioned background      set of 1 item
+	minimizewindow(#98)	
+	minimizewindow(#99)						:rem shrink window to icon
+	create(#100,1600,1,ntest3)				:rem 1600 x, 1 y dimensioned  signal    set of ntest3 items
+	maximizewindow(#100)					:rem 
+	ScaleData(#100,-50,200)                 :rem scale at start from -50 to 200 counts
+	positioncursor(#100,800): cursxprev=800	:rem sets and remembers cursor x rem Starting position and background 
+	targetpos=negdelaypos					:rem move to the start position for the scan
+	gosub .MoveAbsoluteFast
+	print("Now at start position  ";actpos)
+	setexposuretime(0.021)					:rem for cleansing readout
+	run()									:rem cleansing readout
+	setexposuretime(expotime)
+rem
+	bgcounter=1
+	while bgcounter<=5						:rem background measurements
+		run()
+		#0[1]=0								:rem pixel 1 is set to 0
+		activekineticposition(#0,bgcounter)
+		#98{bgcounter}=#0
+		bgcounter=bgcounter+1
+		delay(200)
+	wend
+rem	
+	#99=(#98_sig{1}+#98_sig{2}+#98_sig{3}+#98_sig{4}+#98_sig{5})/5
+    #99=smooth3(#99)                        :rem perform 9 point Savitsky-Golay smoothing on bg spectrum
+	bgflag=1			
+	topwindow(#100)				
+rem -------------------------------------------- scan ----------------------------------------
+pflag=0										:rem switches off report from MoveAbsolute...
+	targetpos=maxdelaypos					:rem move to the end position for a scan
+	gosub .MoveAbsoluteFast
+	print("Now at end position  ";actpos)
+	setexposuretime(0.021)					:rem for cleansing readout
+	run()									:rem cleansing readout
+	setexposuretime(expotime)
+counter=1
+while (counter<=ntest3) 
+	print(counter;"/";ntest3;" at ";actpos; " & ";delaytime;" ps")
+	infotext(#100,counter;"/";ntest;" at ";actpos; " & ";delaytime;" ps")
+	run()									:rem measurement at the present delay
+	#0[1]=delaytime							:rem place counter  onto pixel 1
+	#100{counter}=#0-#99					:rem subtract background and place item into dataset #100
+	activekineticposition(#100,counter)
+	gosub .testcursor
+	counter=counter+1
+	minimizewindow(#0)
+wend
+targetpos=zeropos
+	gosub .MoveAbsoluteFast
+	print("Now at zero position  ";actpos)
+mflag=1										:rem flags that measurement has been done
+return
+rem
+rem
+rem ******************************************************************************************
+.test
+rem ******************************************************************************************
+rem stays at actual delay and records ntest  signal spectra
+rem ------------------------------------------------------------------------------------------
+If (bgflag==0) then
+	key("Background not measured yet...")
+else
+rem Setup of the camera
+	setacquisitiontype(0)					:rem signal
+	setacquisitionmode(1)        			:rem single scan mode
+	setreadoutmode(0)            			:rem chose either Full Vertically Binned (FVB) spectra
+rem    setsingletrack(125,75)           		:rem       or else single track binning	setreadoutmode(0)            			:rem Full Vertically Binned (FVB) spectra
+	setdatatype(1)							:rem counts
+rem
+	minimizewindow(#98)	
+	minimizewindow(#99)						:rem shrink window to icon
+	create(#100,1600,1,ntest)				:rem 1600 x, 1 y dimensioned  signal    set of nmeas items
+rem	maximizewindow(#100)					:rem 
+rem	topwindow(#100)
+	positioncursor(#100,800): cursxprev=800	:rem sets and remembers cursor x 	rem Starting position and background 
+	setexposuretime(0.021)					:rem for cleansing readout
+	run()									:rem cleansing readout
+	setexposuretime(expotime)
+rem -------------------------------------------- scan ----------------------------------------
+pflag=0										:rem switches off report from MoveAbsolute...
+counter=1
+while (counter<=ntest) 
+	print(counter;"/";ntest;" at ";actpos; " & ";delaytime;" ps")
+	infotext(#100,counter;"/";ntest;" at ";actpos; " & ";delaytime;" ps")
+	run()									:rem measurement at the present delay
+	#0[1]=delaytime							:rem place counter  onto pixel 1
+	#100{counter}=#0-#99					:rem subtract background and place item into dataset #100
+	activekineticposition(#100,counter)
+	gosub .testcursor
+	counter=counter+1
+	minimizewindow(#0)
+wend
+mflag=1										:rem flags that measurement has been done
+endif
+return
+rem ******************************************************************************************
+.meascursor
+rem ******************************************************************************************
+rem checks movement of cursorx
+rem ------------------------------------------------------------------------------------------
+	cursxnow=cursorx(#100)
+	if (cursxnow<>cursxprev) then			:rem cursor x was moved
+		if (cursxnow>cursxprev) then		:rem double the actual stepwidth w ithout changing 
+											:rem           corresp. entry  in delay parameters
+			incrementpos=2*incrementpos
+			cursxprev=cursxnow
+		endif
+		if (cursxnow<cursxprev) then
+			counter=nmeas+1
+		endif
+	endif									:rem cursor x was not moved
+	return
+rem ******************************************************************************************
+.testcursor
+rem ******************************************************************************************
+rem checks movement of cursorx
+rem ------------------------------------------------------------------------------------------
+	cursxnow=cursorx(#100)
+	if (cursxnow<>cursxprev) then			:rem cursor x was moved	
+			counter=ntest+1
+	
+	endif									:rem cursor x was not moved
+	return
