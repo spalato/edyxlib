@@ -1,6 +1,7 @@
 import numpy as np
 from lmfit.lineshapes import voigt
-from scipy.special import assoc_laguerre, factorial
+from scipy.special import assoc_laguerre, factorial, erfc, erf
+tiny = 1.0e-15
 
 
 def fc_factor(m, n, s):
@@ -188,3 +189,147 @@ def vibronic_absorption(x, amp, x0, s, sigma, gamma, e_vib,  kt=0, **kw):
     """
     return amp*vibronic_ls(x-x0, s, sigma, gamma, e_vib, kt=kt, **kw)
 
+
+
+def conv_exp(x, amp, tau, sigma, t0, y0):
+    """
+    Single exponential decay convolved with a gaussian. Includes an offset.
+
+    The value of y is computed directly as:
+    y = amp/2 * exp[0.5 (k sigma)^2 - k t_r] erfc[(sigma^2 k - t_r) / (sqrt(2) sigma)]
+    where k = 1/tau and t_r = t-t0.
+
+    The offset y0 is added as:
+    y += 0.5 y0 (1 + erf[ t_r / (sqrt(2) sigma)])
+
+    The calculation is performed only for t_r >= -5 sigma.
+
+    Parameters
+    ----------
+    x : (N,) np.ndarray
+        Independent variable (typically time).
+    amp : float
+        Amplitude
+    tau : float
+        Decay time constant
+    sigma : float
+        Width of the gaussian IRF.
+    t0 : float
+        Time 0.
+    y0 : float
+        Offset.
+
+    Returns
+    -------
+    y : (N,) np.ndarray
+        Model values.
+    """
+    tr = x-t0
+    k = max(1/tau, tiny)
+    out = np.zeros_like(tr)
+    thres = -5 * sigma
+    m = tr >= thres
+    out[m] = 0.5 * np.exp(0.5 * (k * sigma) ** 2 - k * tr[m]) * erfc((sigma ** 2 * k - tr[m]) / (np.sqrt(2) * sigma))
+    out *= amp
+    out += 0.5*y0*(1 + erf(tr / sigma / np.sqrt(2)))
+    return out
+
+def conv_biexp(x, amp0, tau0, amp1, tau1, sigma, t0, y0):
+    """
+    Biexponential decay convolved with a gaussian. Includes an offset.
+
+    For each exponential component, the value of y_i is computed directly as:
+    y_i = amp_i/2 * exp[0.5 (k_i sigma)^2 - k_i t_r] erfc[(sigma^2 k_i - t_r) / (sqrt(2) sigma)]
+    where k_i = 1/tau_i and t_r = t-t0.
+
+    The offset y0 is added as:
+    y += 0.5 y0 (1 + erf[ t_r / (sqrt(2) sigma)])
+
+    The calculation is performed only for t_r >= -5 sigma.
+
+    Parameters
+    ----------
+    x : (N,) np.ndarray
+        Independent variable (typically time).
+    amp0 : float
+        Amplitude
+    tau0 : float
+        Decay time constant
+    amp1 : float
+        Amplitude
+    tau1 : float
+        Decay time constant
+    sigma : float
+        Width of the gaussian IRF.
+    t0 : float
+        Time 0.
+    y0 : float
+        Offset.
+
+    Returns
+    -------
+    y : (N,) np.ndarray
+        Model values.
+    """
+    tr = x-t0
+    out = np.zeros_like(tr)
+    thres = -5 * sigma
+    m = tr >= thres
+    amps = [amp0, amp1]
+    ks = [max(1/tau, tiny) for tau in (tau0, tau1)]
+    for a, k in zip(amps, ks):
+        out[m] += a * 0.5 * np.exp(0.5 * (k * sigma) ** 2 - k * tr[m]) * erfc((sigma ** 2 * k - tr[m]) / (np.sqrt(2) * sigma))
+    out += 0.5*y0*(1 + erf(tr / sigma / np.sqrt(2)))
+    return out
+
+def conv_triexp(x, amp0, tau0, amp1, tau1, amp2, tau2, sigma, t0, y0):
+    """
+    Triple exponential decay convolved with a gaussian. Includes an offset.
+
+    For each exponential component, the value of y_i is computed directly as:
+    y_i = amp_i/2 * exp[0.5 (k_i sigma)^2 - k_i t_r] erfc[(sigma^2 k_i - t_r) / (sqrt(2) sigma)]
+    where k_i = 1/tau_i and t_r = t-t0.
+
+    The offset y0 is added as:
+    y += 0.5 y0 (1 + erf[ t_r / (sqrt(2) sigma)])
+
+    The calculation is performed only for t_r >= -5 sigma.
+
+    Parameters
+    ----------
+    x : (N,) np.ndarray
+        Independent variable (typically time).
+    amp0 : float
+        Amplitude
+    tau0 : float
+        Decay time constant
+    amp1 : float
+        Amplitude
+    tau1 : float
+        Decay time constant
+    amp2 : float
+        Amplitude
+    tau2 : float
+        Decay time constant
+    sigma : float
+        Width of the gaussian IRF.
+    t0 : float
+        Time 0.
+    y0 : float
+        Offset.
+
+    Returns
+    -------
+    y : (N,) np.ndarray
+        Model values.
+    """
+    tr = x-t0
+    out = np.zeros_like(tr)
+    thres = -5 * sigma
+    m = tr >= thres
+    amps = [amp0, amp1, amp2]
+    ks = [max(1/tau, tiny) for tau in (tau0, tau1, tau2)]
+    for a, k in zip(amps, ks):
+        out[m] += a * 0.5 * np.exp(0.5 * (k * sigma) ** 2 - k * tr[m]) * erfc((sigma ** 2 * k - tr[m]) / (np.sqrt(2) * sigma))
+    out += 0.5*y0*(1 + erf(tr / sigma / np.sqrt(2)))
+    return out
