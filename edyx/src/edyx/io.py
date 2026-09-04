@@ -165,7 +165,7 @@ def load_asc_series(fnames, step="first"):
         Signal intensity
     """
     # read the data
-    # TODO: actually read the pixel/wl axis from the first file.
+    # TODO: ensure it can read files obtained both with and without the spectrograph.
     nfiles = len(fnames)
     logger.debug(f"nfiles: {nfiles}")
     fnames = iter(fnames)
@@ -181,6 +181,7 @@ def load_asc_series(fnames, step="first"):
     logger.debug(f"Trace shape: {trace.shape}")
     assert trace.shape == (nfiles, wl.size)
     # compute time axis
+    # TODO: test these cases.
     if step == "first":
         delays = trace[:,0]
     elif step == "filename":

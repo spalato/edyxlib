@@ -32,7 +32,7 @@ def load_itos_spectrum(fname = __REF_FNAME):
 
 # ══════════════════════════  BAND INTEGRALS  ═══════════════════════════════
 
-def band_integral(wl, da, bounds):  # TODO: rename to: dipole integral? weighted band integral?
+def band_integral(wl, da, bounds):  
     """Compute band integral weighted by 1/λ.
 
     Computes the band integral I of signal DA over interval λ₁, λ₂,

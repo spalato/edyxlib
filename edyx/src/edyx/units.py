@@ -43,8 +43,6 @@ def angphz2nm(x):
     """Convert angular frequency in rad/fs to wavelength in nanometers."""
     return phz2nm(x/2/pi)
 
-
-# TODO Sam: return functions are identical – is this intended?
 def nm2cmi(x):
     """Convert wavelength in nanometers to wavenumber in inverse centimeters."""
     return centi/x/nano
