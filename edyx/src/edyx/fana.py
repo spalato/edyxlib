@@ -10,16 +10,6 @@ logger = logging.getLogger(__name__)
 __dirpath = os.path.dirname(os.path.abspath(__file__))
 
 
-# TODO where is the better version?
-# TODO Sam: which function do you prefer?  (There are more despike_median_... functions below..)
-def despike_median(data, size, threshold=5):
-    cutoff = np.std(data) * threshold
-    filtered = median_filter(data, size=size)
-    reject = np.abs(filtered-data) > cutoff
-    despiked = np.copy(data)
-    despiked[reject] = filtered[reject]
-    return despiked
-
 def despike_median_p(data, size, threshold=3):
     filtered = medfilt2d(data, size)
     span = generic_filter(data, span595, size=size)
