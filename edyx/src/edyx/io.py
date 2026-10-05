@@ -283,3 +283,5 @@ def save_txt(fname, delays, wl, trace):
     cnt[0,1:] = wl
     cnt[1:,1:] = trace
     np.savetxt(fname, cnt, fmt="%.06g")
+
+# TODO: add support for Picoquant's phu files, via the phufile module.
