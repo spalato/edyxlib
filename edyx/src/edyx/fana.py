@@ -90,6 +90,7 @@ def lognorm(x, amp, x0, delta, gamma):
     return amp * np.exp(-np.log(2) * ((np.log1p(arg)) / gamma) ** 2)
 
 
+# TODO: move this somewhere less prevalent.
 # load lognormal parameters
 default_ref_spectra = {}
 #try:
@@ -98,7 +99,7 @@ with open(os.path.join(__dirpath, "refspec_Gerecke_RSI_2016.toml")) as f:
 #except Exception:
 #    logger.warning("Loading reference fluorescence spectra failed.")
 
-
+# TODO: change to wl -> wvn / eV function, including the jacobian.
 def ref_spec_wn(wnm, reference, database=default_ref_spectra):
     """
     Reference spectrum as a photon counts over wavenumbers.
@@ -134,7 +135,7 @@ def ref_spec_wn(wnm, reference, database=default_ref_spectra):
         y += lognorm(wnm, *p)
     return y
 
-
+# TODO: not necessary
 def ref_spec_wl(wl, reference, database=default_ref_spectra):
     """
     Reference spectrum as a photon counts over wavelength.
@@ -164,7 +165,8 @@ def ref_spec_wl(wl, reference, database=default_ref_spectra):
 def shift_kin(t, y, t0):
     return np.interp(t+t0, t, y, left=np.nan, right=np.nan)
 
-
+# TODO: do we have it in TANA?
+# TODO: add keyword: do we trim nans?
 def shift_trace(t, z, t0_corr):
     """Correct trace using t0 curve.
 

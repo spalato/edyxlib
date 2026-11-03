@@ -79,6 +79,8 @@ def read_ab_stack(fnames):
     return wl, od
 
 
+# TODO: add a function to correct the data (intensity correction)
+# TODO: make sure it's easy to save the corrected data. (Make function, make CLI)
 def read_cary_uv(fname):
     """Read spectra from Cary in csv format.
 
