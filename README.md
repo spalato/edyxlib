@@ -66,6 +66,7 @@ push. Thanks a lot!
 ## Full-patch developper
 
 TODO: mutliple module development.
+`uv sync --active`
 
 # TODO
 

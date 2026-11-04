@@ -25,7 +25,7 @@ dependencies = [
 
 [project.scripts] # command line tools.
 spectra-fit = "edyx.scripts.spectra_fit:app"
-collect-asc ="edyx.scripts.collect_asc:run"
+collect-asc ="edyx.scripts.collect_asc:app"
 
 [project.urls]
 Repository = "https://github.com/spalato/edyxlib"
