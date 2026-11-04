@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import dropwhile
 import re
 import logging
 
@@ -287,3 +288,29 @@ def save_txt(fname, delays, wl, trace):
     np.savetxt(fname, cnt, fmt="%.06g")
 
 # TODO: add support for Picoquant's phu files, via the phufile module.
+def read_oceanview(fname):
+    """Read spectra from saved using OceanView
+
+    Parameters
+    ----------
+    fname: str
+        File name
+
+    Returns
+    -------
+    wl : np.ndarray
+        Wavelength
+    counts : np.ndarray
+        Signal
+    """
+    with open(fname) as f:
+        ln = next(
+            dropwhile(
+                lambda ln: "Pixels in Spectrum" not in ln, 
+                f
+            )
+        ).strip().split(" ")
+        npix = int(ln[-1])
+        dat = np.loadtxt(dropwhile(lambda ln: "Begin Spectral Data" not in ln, f), skiprows=1)
+        assert dat.shape[1] == 2 # not sure how multiple columns are handled
+        return dat[:,0], dat[:,1]
