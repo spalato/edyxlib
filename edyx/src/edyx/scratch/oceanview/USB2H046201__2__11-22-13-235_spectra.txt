@@ -1,0 +1,6 @@
+filename: USB2H046201__2__11-22-13-235.txt
+      barycenter: 804.649
+      fwhm_num:   34.4543
+      cwl_fit:    804.551
+      fwhm_fit:   35.1738
+    

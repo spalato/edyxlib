@@ -19,11 +19,13 @@ dependencies = [
     "matplotlib",
     "lmfit",
     "typer",
+    "rich",
     # TODO: add packages that are part of our "standard distribution""
 ]
 
 [project.scripts] # command line tools.
-spectra_fit = "edyx.scripts.spectra_fit:app"
+spectra-fit = "edyx.scripts.spectra_fit:app"
+collect-asc ="edyx.scripts.collect_asc:run"
 
 [project.urls]
 Repository = "https://github.com/spalato/edyxlib"
