@@ -217,5 +217,8 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-
+# Raw data files for testing things 
 *.asc
+
+# distribution, site index
+site/ 
