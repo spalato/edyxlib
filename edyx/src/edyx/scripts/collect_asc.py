@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -8,7 +9,7 @@ from rich.progress import Progress
 
 from edyx.io import load_asc_series, save_txt
 
-logging.basicConfig(level=logging.INFO, handlers=[RichHandler()], format="%(name)s:%(message)s")
+logging.basicConfig(level=logging.INFO, handlers=[RichHandler()], format="%(message)s")
 
 app = typer.Typer()
 
@@ -16,6 +17,14 @@ app = typer.Typer()
 def frame_idx(fname):
     """Get frame index from filename: `name0001.asc` returns 1"""
     return int(fname[-8:-4])
+
+
+def rel(path: Path) -> str:
+    """Path relative to the current folder, quoted for display: `'260910/run01'`."""
+    try:
+        return f"'{os.path.relpath(path)}'"
+    except ValueError:  # different drive on Windows: no relative path exists.
+        return f"'{path}'"
 
 
 def find_runs(path: Path, pattern: str) -> list[Path]:
@@ -53,7 +62,7 @@ def collect_run(run: Path, pattern: str, step: str, outdir: Optional[Path], prog
     fnames = sorted((str(p) for p in run.glob(pattern)), key=frame_idx)
     output = (outdir or run.parent) / f"{run.parent.name}_{run.name}.txt"
 
-    logging.info("Loading %d files from: %s", len(fnames), run)
+    logging.info("Loading %d files from: %s", len(fnames), rel(run))
     if progress is None:
         data = load_asc_series(fnames, step=step)
     else:
@@ -63,7 +72,7 @@ def collect_run(run: Path, pattern: str, step: str, outdir: Optional[Path], prog
         finally:
             progress.remove_task(task)
 
-    logging.info("Saving to: %s", output)
+    logging.info("Saving to: %s", rel(output))
     save_txt(str(output), *data)
     return output
 
@@ -126,7 +135,7 @@ def main(
     for path in paths:
         found = find_runs(path, pattern)
         if not found:
-            logging.error("No run folders with files matching '%s' in: %s", pattern, path)
+            logging.error("No run folders with files matching '%s' in: %s", pattern, rel(path))
             raise typer.Exit(code=1)
         runs.extend(found)
 
@@ -143,7 +152,7 @@ def main(
                 collect_run(run, pattern, step, outdir, progress)
             except Exception as e:
                 # full traceback only with --verbose.
-                logging.error("Failed to process %s: %s: %s", run, type(e).__name__, e,
+                logging.error("Failed to process %s: %s: %s", rel(run), type(e).__name__, e,
                               exc_info=verbose)
                 failed.append(run)
     finally:
