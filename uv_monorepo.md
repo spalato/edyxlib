@@ -36,6 +36,16 @@ Reorganize the lab's scattered Python code into a uv-managed monorepo and migrat
 - CLI tools are built with `typer`.
 - They are declared as scripts in the `[project.scripts]` table of the owning package's `pyproject.toml`, so installing the package puts the command on the path of its environment (e.g. `edyxenv`).
 
+## Distribution
+- Not published on PyPI. Wheels and sdists are attached to GitHub Releases of the (public) repo.
+- One release per package version, tagged `<pkg>-v<version>` (e.g. `edyx-v0.1.0`), so packages version independently.
+- To release: `scripts\release.ps1 <pkg> <version>` bumps the version, runs tests, commits, tags and pushes. The tag triggers `.github/workflows/release.yml`, which checks the tag matches `pyproject.toml`, runs tests, runs `uv build` and creates the release (notes auto-generated).
+- The release workflow also rebuilds a PEP 503 package index (`scripts/build_index.py`) from all GitHub Releases and deploys it to GitHub Pages at `https://spalato.github.io/edyxlib/simple/`. The URL is fixed and always lists every released version, so users get the latest with `uv pip install --index <url> <pkg>`. Files stay on the Releases; the index only links to them. One-time setup: repo Settings > Pages > Source = "GitHub Actions". To index releases that already exist (bootstrap), run the workflow manually (Actions > release > Run workflow); that skips the release job and only rebuilds the index. Users can avoid typing the URL by setting `UV_INDEX` once, or adding an `[[index]]` entry to their `uv.toml`.
+- The index uses the PEP 503 HTML API only. PEP 691 (JSON) needs content negotiation that static GitHub Pages cannot provide, and `uv`/`pip` read the HTML fine.
+- Use `--index` (not `--extra-index-url`) so the lab index takes priority over PyPI, avoiding name-confusion with unrelated PyPI projects.
+- Basic users install from this index into `edyxenv` (see README). Inter-package dependencies (e.g. `pyspan` -> `edyx`) resolve automatically through the index.
+- Each package carries its own copy of `LICENSE.txt` (uv_build forbids `..` paths in `license-files`).
+
 ## Promotion policy
 - Device adapters start inside whichever `<exp-name>` first needs them and move to `<shared-instrument>` once a second experiment needs the same device.
 - Specialized analysis code goes straight into `edyx.analysis.<technique>` regardless of reuse count. The reason is dependency isolation (e.g. no driver installs needed on a Mac), not reuse.

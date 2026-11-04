@@ -1,0 +1,76 @@
+name: release
+
+# Push a tag like `edyx-v0.1.0` to test, build and publish that package's
+# wheel + sdist as a GitHub Release.
+# Run manually (workflow_dispatch) to rebuild only the package index.
+on:
+  push:
+    tags: ["*-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Parse tag
+        run: |
+          pkg="${GITHUB_REF_NAME%%-v*}"
+          version="${GITHUB_REF_NAME#*-v}"
+          echo "PKG=$pkg" >> "$GITHUB_ENV"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Check tag matches pyproject version
+        working-directory: ${{ env.PKG }}
+        run: |
+          actual="$(uv version --short)"
+          [ "$actual" = "$VERSION" ] || { echo "Tag $VERSION != pyproject $actual"; exit 1; }
+
+      - name: Test
+        working-directory: ${{ env.PKG }}
+        run: uv run pytest
+
+      - name: Build
+        working-directory: ${{ env.PKG }}
+        run: uv build
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "$PKG"/dist/* --generate-notes
+
+  # The index is rebuilt from all releases, so a superseded run is harmless.
+  # Concurrency lives here (not on the workflow) so release creation is never
+  # cancelled by a newer tag push.
+  index:
+    needs: release
+    if: ${{ !cancelled() && needs.release.result != 'failure' }}
+    concurrency:
+      group: index
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build package index
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 scripts/build_index.py site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

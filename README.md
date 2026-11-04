@@ -29,7 +29,17 @@ edyxenv
 Add our main packages: `edyx` and `pyspan`. `edyx` contains most of the
 processing functions. `pyspan` contains a few extra interactive processing tools.
 
-TODO: install from wheels
+Packages are distributed as wheels attached to
+[GitHub Releases](https://github.com/spalato/edyxlib/releases). Each release is
+tagged `<package>-v<version>`. A package index with a fixed address always
+lists the released versions. Install or upgrade to the latest with:
+```powershell
+uv pip install --python ~\.venvs\edyxenv --upgrade `
+  --index https://spalato.github.io/edyxlib/simple/ edyx
+```
+Dependencies between our packages (e.g. `pyspan` needs `edyx`) are resolved
+automatically. To install a specific version, use `edyx==0.1.0`.
+
 TODO: point to examples
 TODO: configure vscode: recommended extension. python jupyter
 
@@ -52,12 +62,12 @@ Now, navigate to the subdirectory of the module you want to contribute to and
 run `uv sync`
 ```powershell
 deactivate # deactivate the default edyxenv environment. 
-cd edyxlib/edyx # for example, here we go into edyx
+cd edyxlib/edyx # for example, here we go into edyx, where the `pyproject.toml` file is.
 uv sync
 code .  # open vscode here.
 ```
 This installs the `edyx` module project in editable mode. You will get a prompt
-about the a git repor being find in the parent folder, say yes. If you need to
+about the a git repo being find in the parent folder, say yes. If you need to
 make edits across mulitple modules at the same time, see [below](#full-patch-developper).
 
 Make a branch, edit the code and test your changes. Once satisfied, commit and
@@ -65,8 +75,10 @@ push. Thanks a lot!
 
 ## Full-patch developper
 
-TODO: mutliple module development.
+
 `uv sync --active`
+
+
 
 # TODO
 
