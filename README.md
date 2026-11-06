@@ -28,17 +28,11 @@ edyxenv
 
 Add our main packages: `edyx` and `pyspan`. `edyx` contains most of the
 processing functions. `pyspan` contains a few extra interactive processing tools.
-
-Packages are distributed as wheels attached to
-[GitHub Releases](https://github.com/spalato/edyxlib/releases). Each release is
-tagged `<package>-v<version>`. A package index with a fixed address always
-lists the released versions. Install or upgrade to the latest with:
+Install the latest versions using:
 ```powershell
 uv pip install --python ~\.venvs\edyxenv --upgrade `
   --index https://spalato.github.io/edyxlib/simple/ edyx
 ```
-Dependencies between our packages (e.g. `pyspan` needs `edyx`) are resolved
-automatically. To install a specific version, use `edyx==0.1.0`.
 
 TODO: point to examples
 TODO: configure vscode: recommended extension. python jupyter
@@ -88,3 +82,12 @@ Readme contents:
 - [ ] How to install: for basic users, for contributing, for specific packages.
 - [ ] Guidelines (do we want a `contributing.md` file?)
 
+# For maintainers
+
+Packages are distributed as wheels attached to
+[GitHub Releases](https://github.com/spalato/edyxlib/releases). Each release is
+tagged `<package>-v<version>`. A package index with a fixed address always
+lists the released versions. Install or upgrade to the latest with:
+
+Dependencies between our packages (e.g. `pyspan` needs `edyx`) are resolved
+automatically. To install a specific version, use `edyx==0.1.0`.
