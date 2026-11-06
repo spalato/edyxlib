@@ -50,3 +50,13 @@ def nm2cmi(x):
 def cmi2nm(x):
     """Convert wavenumber in inverse centimeters to wavelength in nanometers."""
     return centi/x/nano
+
+def cmi2ev(x):
+    """Convert wavenumber in inverse centimeters to energy in electronvolts."""
+    scale = h*c/eV/centi
+    return x*scale
+
+def ev2cmi(x):
+    """Convert energy in electronvolts to wavenumber in inverse centimeters."""
+    scale = eV*centi/h/c
+    return x*scale
