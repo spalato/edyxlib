@@ -72,6 +72,22 @@ def test_on_click():
     p._on_click(types.SimpleNamespace(inaxes=p.ax_map, xdata=0.9))
     p._on_click(types.SimpleNamespace(inaxes=p.ax_kin, xdata=None))
     np.testing.assert_array_equal(p.points, [[wl[0], 0.4]])
+    assert p.current == 0  # auto_next off by default
+
+
+def test_auto_next():
+    p = T0Picker(t, wl, s, step=3, auto_next=True)
+    p._on_click(types.SimpleNamespace(inaxes=p.ax_kin, xdata=0.4))
+    p._on_click(types.SimpleNamespace(inaxes=p.ax_kin, xdata=0.5))
+    np.testing.assert_array_equal(p.points, [[wl[0], 0.4], [wl[3], 0.5]])
+    assert p.current == 6
+    p.add_point(0.6)  # programmatic: no jump
+    assert p.current == 6
+    box = p.show()
+    (check,) = [w for c in box.children if hasattr(c, "children")
+                for w in c.children if w.description == "Next after click"]
+    check.value = False
+    assert not p.auto_next
 
 
 def test_plot_state():

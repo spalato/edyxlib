@@ -32,6 +32,8 @@ class T0Picker:
         Number of wavelength rows moved by `next` and `prev`.
     clim : (float, float), optional
         Colour limits of the map. Default: symmetric, 99th percentile of `abs(s)`.
+    auto_next : bool
+        After a click, go to the next row (`step` rows on). Also a checkbox.
 
     Attributes
     ----------
@@ -42,11 +44,12 @@ class T0Picker:
     fig, ax_map, ax_kin : matplotlib Figure and Axes
     """
 
-    def __init__(self, t, wl, s, points=None, step=10, clim=None):
+    def __init__(self, t, wl, s, points=None, step=10, clim=None, auto_next=False):
         self.t = np.asarray(t, dtype=float)
         self.wl = np.asarray(wl, dtype=float)
         self.s = np.ma.filled(np.ma.asarray(s, dtype=float), np.nan)
         self.step = int(step)
+        self.auto_next = bool(auto_next)
         self.current = 0
         self._points = [] if points is None else [
             [float(a), float(b)] for a, b in np.asarray(points, dtype=float).reshape(-1, 2)
@@ -154,6 +157,8 @@ class T0Picker:
             return
         if event.inaxes is self.ax_kin and event.xdata is not None:
             self.add_point(event.xdata)
+            if self.auto_next:
+                self.next()
 
     def show(self):
         """Build the controls and return a `VBox`."""
@@ -178,6 +183,9 @@ class T0Picker:
             button = widgets.Button(description=text)
             button.on_click(run(action))
             buttons.append(button)
+        auto = widgets.Checkbox(value=self.auto_next, description="Next after click")
+        auto.observe(lambda ch: setattr(self, "auto_next", ch["new"]), names="value")
+        buttons.append(auto)
 
         if self._click_id is None:
             self._click_id = self.fig.canvas.mpl_connect("button_press_event", self._on_click)

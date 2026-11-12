@@ -101,7 +101,8 @@ def test_input_mask_kept():
 def test_threshold():
     r = rmsd_vs_median(stack, 0)
     insp = ScanInspector(t, wl, stack, rmsd=r)
-    assert insp.threshold == np.nanmax(r)
+    assert np.nanmax(r) <= insp.threshold < np.nanmax(r) + 0.01
+    assert insp.threshold == round(insp.threshold, 2)
     assert not insp.mask.any()
     thr = float(np.median(r))
     insp.set_threshold(thr)

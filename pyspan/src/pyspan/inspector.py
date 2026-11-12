@@ -38,7 +38,7 @@ class ScanInspector:
         Enables the RMSD panel and the threshold.
     threshold : float, optional
         Spectra with `rmsd > threshold` are rejected. Default (with `rmsd`): the
-        maximum of `rmsd`, which rejects nothing.
+        maximum of `rmsd` rounded up to 2 decimals, which rejects nothing.
     ylim, ylabel :
         Passed to the `Overlay`.
 
@@ -68,7 +68,9 @@ class ScanInspector:
         if self.rmsd is None:
             self.threshold = None
         else:
-            self.threshold = float(np.nanmax(self.rmsd) if threshold is None else threshold)
+            if threshold is None:  # max(rmsd), rounded up to 2 decimals: rejects nothing
+                threshold = np.ceil(np.nanmax(self.rmsd) * 100) / 100
+            self.threshold = float(threshold)
         self.current = 0
         self.span = None
 
