@@ -263,6 +263,8 @@ Evidence for "copy calls, not implementations":
 - Common variants become parameters (`how="mask"|"interpolate"`,
   `edges="clip"|"zero"|"nan"`, `pad=`). One-off workarounds stay in the notebook
   as plain numpy, and move into the library when they recur.
+  First round (2026-11-12): `shift_trace(edges="clip"|"nan")` only. Zero padding
+  stays plain numpy (`np.nan_to_num`, `np.pad`) until it recurs.
 - Provenance is a *descriptive* log (step + params, repairs, calibration files),
   written into the output header.
 - No sidecar files for decisions: notebooks are self-documenting, so decisions live
@@ -295,8 +297,8 @@ Added 2026-11-12:
 - **New functions**, each with its benefit:
   - `crop(t, wl, s, t_lim=None, wl_lim=None)`: replaces `cut_wl` and the
     crop-before-save cells.
-  - `despike(...)`: thin wrapper over the `fana` functions; the method is a
-    parameter.
+  - ~~`despike(...)` wrapper~~: dropped (2026-11-12). The `fana` functions are
+    already one call; the replaced positions are `out != data`.
   - `pcf_correct(wl, s, pcf_wl, pcf)`: multiplies by the photometric correction
     function, interpolated onto `wl`. Replaces the interp-and-multiply cell.
   - `fluo_wl(wl_u, gate=1340)`: converts the detected (upconverted) axis to the
@@ -375,9 +377,19 @@ Small tools, one job each, connected by a common self-describing format.
 - Calibration storage: consolidate calibrations into an early sidecar file
   (text-based, `toml` preferred)? Also the coefficient and parameter convention, and
   how a notebook refers to a calibration made on another day. Needs more discussion.
-- Placement of the functions both techniques use (shift, `T0Curve`, `crop`): in
-  `tana` with `fana` importing them, or the other way round?
 - `TAStack` as the name, now that FLUPS uses the same stack?
+
+Resolved 2026-11-12:
+- Shared functions (`shift_trace`, `crop`, `subtract_pre_t0`, `avg_scans`,
+  `avg_spectra`) live in `edyx.tana`. `fana` imports from it (`fana` reads a toml at
+  import, `tana` doesn't). Axis constants live in `edyx.io`, next to the layout.
+- `collect-asc` writes `<date>_<run>.dat` in the TA layout, with a
+  `# layout: wl x t` header comment. `.txt` stays the legacy t x wl format, read
+  with `load_txt`.
+- All readers (`read_ta_dat`, `load_txt`, `load_npz`, `load_asc_series`) return
+  `s` as wl x t with ascending t. File layouts are unchanged.
+- `T0Curve` waits for the calibration storage decision. `shift_trace` only needs a
+  `t0` array.
 
 ## Quick fixes, independent of the redesign
 
