@@ -245,8 +245,12 @@ Differences from the plan, from review and user testing:
 - `T0Picker`: points kept in click order (the stored 53 points come back unchanged).
   One point per wavelength row; clicking again moves it. Clicks are ignored in
   zoom/pan mode.
-- `Linear`: `threshold=` input, applied at once. Open question for SP: the default
-  threshold is shown but applied only once changed (legacy behaviour, kept).
+- `Linear`: `threshold=` input (also through `from_files`), applied at once. Open
+  question for SP: the default threshold is shown, but applied to a file only once
+  its threshold is edited or the file is selected in the dropdown (legacy, kept). So
+  the mask depends on which files were visited, and re-running with the "Done"
+  literal can differ from the session. Applying the default at once fixes this, but
+  changes `mean_spectra` of existing notebooks.
 - Checked in JupyterLab and VS Code by SP: widgets, span selection, clicks.
 
 ### Not in this round

@@ -89,8 +89,13 @@ TA rejection and t0 review (250709), and FLUPS comparisons (240619).
 
 - RMSD against the median of the files: with 2 files the median is the mean, so
   both files get the same RMSD. The threshold cannot single out one file.
-- `Linear`: the default threshold is shown but applied only once the threshold is
-  changed (legacy behaviour). A threshold passed with `threshold=` is applied at once.
+- `Linear`: the default threshold is shown, but applied to a file only once its
+  threshold is edited or the file is selected in the dropdown (legacy behaviour).
+  The mask then depends on which files were looked at, and pasting "Done" back
+  (`Linear.from_files(fnames, threshold=threshold)`, applied at once to all files)
+  can differ from the session.
+- Literals with file indices (`rejections`, per-file `threshold`) assume the same
+  file order on re-run: use `sorted(glob(...))`, not a bare `glob`.
 
 ## Legacy imports
 

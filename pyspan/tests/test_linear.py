@@ -70,3 +70,30 @@ def test_done_round_trip(lin, capsys):
     np.testing.assert_array_equal(again.od.mask, lin.od.mask)
     lin.done_btn.click()
     plt.close("all")
+
+
+def test_from_files_forwards_threshold(monkeypatch):
+    rng = np.random.default_rng(0)
+    od = rng.normal(size=(L, M, N))
+    # patch the module `Linear` was defined in (test_legacy re-imports pyspan modules)
+    monkeypatch.setitem(Linear.from_files.__func__.__globals__, "read_ab_stack",
+                        lambda fn: (np.linspace(400, 700, M), od))
+    lin = Linear.from_files(["a", "b"], threshold=7.0)
+    np.testing.assert_array_equal(lin.threshold, [7.0, 7.0])
+    assert lin.od.mask.any()
+
+
+def test_default_threshold_applied_on_visit():
+    # Legacy behaviour, pinned until SP decides: the default threshold of a file is
+    # applied only once that file is selected in the dropdown.
+    rng = np.random.default_rng(0)
+    od = rng.normal(size=(L, M, N))
+    od[:, :, 7] += 5  # one outlier repetition per file
+    lin = Linear(wl=np.linspace(400, 700, M), od=od, fnames=["a", "b"])
+    lin.plot()
+    assert not lin.od.mask.any()
+    lin.file_select.value = "b"
+    np.testing.assert_array_equal(lin.od.mask.any(axis=(1, 2)), [False, True])
+    lin.file_select.value = "a"
+    np.testing.assert_array_equal(lin.od.mask.any(axis=(1, 2)), [True, True])
+    plt.close("all")

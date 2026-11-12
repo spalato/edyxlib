@@ -50,7 +50,8 @@ class Linear:
     threshold : float or (L,) array, optional
         RMSD thresholds, e.g. pasted from the output of "Done". Given, they are
         applied at once. Default: mean + 3.5 std of the RMSD of each file, shown
-        but applied only once the threshold is changed (legacy behaviour).
+        but applied to a file only once its threshold is edited or the file is
+        selected in the dropdown (legacy behaviour).
 
     """
     wl: npt.NDArray = field(factory=lambda: np.empty((0,))) # ensure 1D
@@ -246,7 +247,7 @@ class Linear:
 
 
     @classmethod
-    def from_files(cls, fnames):
+    def from_files(cls, fnames, **kwargs):
         """
         Load a Linear object from a list of files.
 
@@ -256,6 +257,8 @@ class Linear:
         ----------
         fnames : iterable
             List of files to read.
+        **kwargs
+            Passed to `Linear`, e.g. `threshold=` pasted from "Done".
 
         Returns
         -------
@@ -263,7 +266,7 @@ class Linear:
             Linear object for inspection.
         """
         wl, od = read_ab_stack(fnames)
-        return cls(wl=wl, od=od, fnames=fnames)
+        return cls(wl=wl, od=od, fnames=fnames, **kwargs)
 
 
 
