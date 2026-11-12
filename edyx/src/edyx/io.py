@@ -213,6 +213,13 @@ def read_asc(fname):
     return np.loadtxt((ln for ln in contents[start:end].splitlines() if ln), delimiter=",")
 
 
+def _ascending_wl_t(delays, trace):
+    """Legacy (T, W) trace to the standard: ascending delays, (W, T)."""
+    if delays[-1] < delays[0]:
+        delays, trace = delays[::-1], trace[::-1]
+    return delays, trace.T
+
+
 def load_asc_series(fnames, step="first"):
     """
     Load a series of Andor Solis `asc` files. Computes the delays and wl.
@@ -266,11 +273,9 @@ def load_asc_series(fnames, step="first"):
             raise ValueError("step argument not understood. Must be a float, convertible to a float, or in "
                              "{'first', 'filename'}.")
         delays = np.arange(0, trace.shape[0]) * step
-    if delays[1]<delays[0]:
-        delays = delays[::-1]
-        trace = trace[::-1,:]
     assert trace.shape == (delays.size, wl.size)
-    return delays, wl, trace.T
+    delays, trace = _ascending_wl_t(delays, trace)
+    return delays, wl, trace
 
 
 def load_npz(fname):
@@ -297,10 +302,8 @@ def load_npz(fname):
     delays = df["delays"]
     trace = df["trace"]
     wl = df["wl"]
-    if delays[1] < delays[0]:
-        delays = delays[::-1]
-        trace = trace[::-1]
-    return delays, wl, trace.T
+    delays, trace = _ascending_wl_t(delays, trace)
+    return delays, wl, trace
 
 
 def load_txt(fname):
@@ -329,10 +332,8 @@ def load_txt(fname):
     delays = cnt[1:,0]
     wl = cnt[0,1:]
     trace = cnt[1:,1:]
-    if delays[1] < delays[0]:
-        delays = delays[::-1]
-        trace = trace[::-1]
-    return delays, wl, trace.T
+    delays, trace = _ascending_wl_t(delays, trace)
+    return delays, wl, trace
 
 
 def save_txt(fname, delays, wl, trace):
@@ -359,12 +360,8 @@ def save_txt(fname, delays, wl, trace):
     --------
     edyx.io.load_txt
     """
-    trace = np.asarray(trace).T
-    cnt = np.full([s+1 for s in trace.shape], np.nan)
-    cnt[1:,0] = delays
-    cnt[0,1:] = wl
-    cnt[1:,1:] = trace
-    np.savetxt(fname, cnt, fmt="%.06g")
+    # pack_trace with the axes swapped gives the (T, W) layout
+    np.savetxt(fname, pack_trace(wl, delays, np.asarray(trace).T), fmt="%.06g")
 
 # TODO: add support for Picoquant's phu files, via the phufile module.
 def read_oceanview(fname):

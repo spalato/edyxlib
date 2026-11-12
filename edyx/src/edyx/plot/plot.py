@@ -5,16 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
-_HAS_COLORCET = False
 try:
     import colorcet as cc
-    _HAS_COLORCET = True
-except ImportError:
-    pass
-
-if _HAS_COLORCET:
     flups_default_cmap = cc.cm.CET_L17
-else:
+except ImportError:
     flups_default_cmap = "inferno"
 
 
@@ -65,26 +59,23 @@ def plot_maps(t, wl, maps, titles=None, ncols=2, diverging=True, **kwargs):
     else:
         vmin, vmax = np.percentile(values, [1, 99])
         defaults = dict(vmin=vmin, vmax=vmax, cmap="Blues")
-    opts = dict(shading="auto", **defaults)
-    opts.update(kwargs)
+    opts = {"shading": "auto", **defaults, **kwargs}
 
     fig, axes = plt.subplots(
         nrows, ncols, sharex=True, sharey=True, squeeze=False,
         layout="constrained", figsize=(4 * ncols, 3 * nrows),
     )
-    for i, ax in enumerate(axes.flat):
-        if i >= n:
-            ax.set_visible(False)
-            continue
-        mesh = ax.pcolormesh(t, wl, maps[i], **opts)
+    for i, (ax, m) in enumerate(zip(axes.flat, maps)):
+        mesh = ax.pcolormesh(t, wl, m, **opts)
         if titles is not None:
             ax.text(0.95, 0.95, titles[i], transform=ax.transAxes,
                     va="top", ha="right")
+        if i + ncols >= n:  # lowest map in its column
+            ax.set_xlabel("delay / ps")
+    for ax in axes.flat[n:]:
+        ax.set_visible(False)
     for ax in axes[:, 0]:
         ax.set_ylabel(r"$\lambda$ / nm")
-    for j in range(ncols):
-        visible = [ax for ax in axes[:, j] if ax.get_visible()]
-        visible[-1].set_xlabel("delay / ps")
     fig.colorbar(mesh, ax=list(axes.flat[:n]))
     return fig, axes
 
@@ -115,7 +106,7 @@ def plot_flups(t, wl, z,
         cnt = cnt.compress(scatter_mask, axis=0)
         wl_cnt = wl.compress(scatter_mask)
         if lev_colors is None:
-            lev_colors = ["w" for v in levels]
+            lev_colors = ["w"] * len(levels)
             lev_colors[0] = "0.85"
         lines = plt.contour(t, wl_cnt, cnt, levels=levels, colors=lev_colors, linewidths=0.5)
         cb.add_lines(lines)
