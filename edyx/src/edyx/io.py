@@ -102,11 +102,13 @@ def stack_traces(traces):
     >>> t, wl, stack = stack_traces(read_ta_dat(fn) for fn in sorted(glob("s*.dat")))
     """
     traces = list(traces)
+    if not traces:
+        raise ValueError("No traces to stack.")
     t, wl, _ = traces[0]
     for i, (ti, wli, _) in enumerate(traces):
-        if not np.allclose(ti, t):
+        if np.shape(ti) != np.shape(t) or not np.allclose(ti, t):
             raise ValueError(f"Delays of trace {i} differ from the first trace.")
-        if not np.allclose(wli, wl):
+        if np.shape(wli) != np.shape(wl) or not np.allclose(wli, wl):
             raise ValueError(f"Wavelengths of trace {i} differ from the first trace.")
     ss = [s for _, _, s in traces]
     if any(np.ma.isMaskedArray(s) for s in ss):
@@ -214,10 +216,9 @@ def read_asc(fname):
 
 
 def _ascending_wl_t(delays, trace):
-    """Legacy (T, W) trace to the standard: ascending delays, (W, T)."""
-    if delays[-1] < delays[0]:
-        delays, trace = delays[::-1], trace[::-1]
-    return delays, trace.T
+    """Legacy (T, W) trace to the standard: sorted delays, (W, T)."""
+    order = np.argsort(delays, kind="stable")
+    return delays[order], trace[order].T
 
 
 def load_asc_series(fnames, step="first"):
@@ -361,7 +362,8 @@ def save_txt(fname, delays, wl, trace):
     edyx.io.load_txt
     """
     # pack_trace with the axes swapped gives the (T, W) layout
-    np.savetxt(fname, pack_trace(wl, delays, np.asarray(trace).T), fmt="%.06g")
+    trace = np.ma.filled(np.ma.asarray(trace, dtype=float), np.nan).T  # masked -> NaN
+    np.savetxt(fname, pack_trace(wl, delays, trace), fmt="%.06g")
 
 # TODO: add support for Picoquant's phu files, via the phufile module.
 def read_oceanview(fname):

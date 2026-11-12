@@ -5,7 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
+from matplotlib.colors import LogNorm
+
 from edyx.plot import plot_maps
+from edyx.plot.plot import plot_flups
 
 t = np.linspace(-1, 10, 30)
 wl = np.linspace(400, 700, 20)
@@ -79,3 +82,26 @@ def test_masked_and_nan():
 def test_titles():
     _, axes = plot_maps(t, wl, make(2), titles=["a", "b"])
     assert [ax.texts[0].get_text() for ax in axes.flat] == ["a", "b"]
+
+
+def tick_labels_shown(ax):
+    return ax.xaxis.get_major_ticks()[0].label1.get_visible()
+
+
+def test_xlabel_and_ticks_above_hidden_slot():
+    _, axes = plot_maps(t, wl, make(3))
+    # (0, 1) is the lowest map of its column: label and tick values
+    assert axes[0, 1].get_xlabel() and tick_labels_shown(axes[0, 1])
+    assert axes[1, 0].get_xlabel() and tick_labels_shown(axes[1, 0])
+    assert not axes[0, 0].get_xlabel() and not tick_labels_shown(axes[0, 0])
+
+
+def test_norm():
+    _, axes = plot_maps(t, wl, make(2, positive=True) + 0.1, norm=LogNorm())
+    assert isinstance(mesh_of(axes[0, 0]).norm, LogNorm)
+
+
+def test_plot_flups_uses_ax():
+    fig, (a1, a2) = plt.subplots(1, 2)  # a2 is the current axes
+    plot_flups(t, wl, make(1, positive=True)[0], ax=a1)
+    assert a1.collections and not a2.collections

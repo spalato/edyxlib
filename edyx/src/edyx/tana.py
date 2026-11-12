@@ -144,6 +144,9 @@ def shift_trace(t, s, t0, edges="clip"):
     if edges == "nan":
         return t, out
     keep = (t + t0.min() >= t[0]) & (t + t0.max() <= t[-1])
+    if not keep.any():
+        raise ValueError(f"t0 spans {np.ptp(t0):g}, more than the delay range "
+                         f"{t[-1] - t[0]:g}: no delay is valid for every wavelength.")
     return t[keep], out[:, keep]
 
 
@@ -193,8 +196,11 @@ def subtract_pre_t0(t, s, t_max):
         Corrected data. Masked points are ignored in the mean; plain in gives
         plain out.
     """
+    pre = np.asarray(t) < t_max
+    if not pre.any():
+        raise ValueError(f"No delay before t_max={t_max} (first delay: {t[0]}).")
     mean = np.ma.mean if np.ma.isMaskedArray(s) else np.mean
-    return s - mean(s[..., t < t_max], axis=TIME_AXIS, keepdims=True)
+    return s - mean(s[..., pre], axis=TIME_AXIS, keepdims=True)
 
 
 def avg_scans(stack):

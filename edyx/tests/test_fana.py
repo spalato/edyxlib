@@ -12,6 +12,7 @@ def test_fluo_wl():
     wl = np.linspace(500, 700, 5)
     np.testing.assert_allclose(fluo_wl(wl), 1 / (1 / wl - 1 / 1340))
     np.testing.assert_allclose(fluo_wl(wl, gate=1300), 1 / (1 / wl - 1 / 1300))
+    np.testing.assert_allclose(fluo_wl([500, 600]), fluo_wl(np.array([500.0, 600.0])))
 
 
 def test_pcf_correct():

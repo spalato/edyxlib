@@ -64,6 +64,22 @@ def test_save_load_txt_round_trip(tmp_path):
     assert np.allclose(t, T) and np.allclose(wl, WL) and np.allclose(s, S)
 
 
+def test_save_txt_masked(tmp_path):
+    fn = tmp_path / "a.txt"
+    m = np.ma.masked_array(S, mask=S == 5)
+    save_txt(fn, T, WL, m)
+    _, _, s = load_txt(fn)
+    assert np.isnan(s[1, 1]) and np.isnan(s).sum() == 1
+
+
+def test_load_npz_unsorted(tmp_path):
+    fn = tmp_path / "a.npz"
+    order = [2, 0, 3, 1]
+    np.savez(fn, delays=T[order], wl=WL, trace=S.T[order])
+    t, _, s = load_npz(fn)
+    assert np.allclose(t, T) and np.allclose(s, S)
+
+
 def test_load_npz(tmp_path):
     fn = tmp_path / "a.npz"
     np.savez(fn, delays=T[::-1], wl=WL, trace=S.T[::-1])
@@ -84,6 +100,10 @@ def test_stack_traces_mismatch():
         stack_traces([(T, WL, S), (T, WL + 1, S)])
     with pytest.raises(ValueError, match="Delays"):
         stack_traces([(T, WL, S), (T + 1, WL, S)])
+    with pytest.raises(ValueError, match="Delays"):  # length 1 would broadcast
+        stack_traces([(T[:1], WL, S[:, :1]), (T, WL, S)])
+    with pytest.raises(ValueError, match="No traces"):
+        stack_traces([])
 
 
 def test_stack_traces_keeps_masks():

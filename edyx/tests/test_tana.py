@@ -84,6 +84,8 @@ def test_shift_trace_errors(data):
         shift_trace(t, s[:-1], t0)
     with pytest.raises(ValueError):
         shift_trace(t, s[:, :-1], t0)
+    with pytest.raises(ValueError, match="t0 spans"):
+        shift_trace(t, s, np.linspace(-7, 7, wl.size))
 
 
 def test_crop_inclusive_and_none(data):
@@ -127,6 +129,12 @@ def test_subtract_pre_t0_avg_matches_notebook(data):
     sub_t = -0.5
     ref = s - s.compress(t < sub_t, axis=1).mean(axis=1)[:, np.newaxis]
     np.testing.assert_allclose(subtract_pre_t0(t, s, sub_t), ref)
+
+
+def test_subtract_pre_t0_empty_window(data):
+    t, wl, t0, s = data
+    with pytest.raises(ValueError, match="No delay before"):
+        subtract_pre_t0(t, s, t[0])  # strict: t < t[0] is empty
 
 
 def test_subtract_pre_t0_masked(data):

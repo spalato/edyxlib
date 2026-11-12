@@ -178,7 +178,7 @@ def fluo_wl(wl_u, gate=1340):
     ndarray
         Fluorescence wavelength axis, in nm.
     """
-    return 1 / (1 / wl_u - 1 / gate)
+    return 1 / (1 / np.asarray(wl_u, dtype=float) - 1 / gate)
 
 
 def pcf_correct(wl, s, pcf_wl, pcf, left=None, right=None):
