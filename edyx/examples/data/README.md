@@ -2,7 +2,7 @@
 
 Copies of lab data, unchanged, so the example notebooks run anywhere.
 
-## TA, 250709 (`C:\work\data\ta\2025\250709`)
+## TA, 250709 
 
 Xolography sample (UDMA matrix, DCPI, coinitiator, MEQ), TA magic angle, 200 fs steps.
 
@@ -10,7 +10,7 @@ Xolography sample (UDMA matrix, DCPI, coinitiator, MEQ), TA magic angle, 200 fs 
 - `s2027_t0corr.npz`: t0 curve measured on s20-s27 (`t0_corr` columns: wl, t0).
 - `s4044.dat`, `s4044_negdelay.dat`: the lab's results (`ta_s4044.ipynb`), for the check.
 
-## FLUPS, 240619 (`C:\work\data\flups\2024\240619`)
+## FLUPS, 240619
 
 ZsOMe in hexane. Legacy `.txt` files (delay x pixel).
 
