@@ -7,7 +7,7 @@ import typer
 from rich.logging import RichHandler
 from rich.progress import Progress
 
-from edyx.io import load_asc_series, save_txt
+from edyx.io import load_asc_series, write_dat
 
 logging.basicConfig(level=logging.INFO, handlers=[RichHandler()], format="%(message)s")
 
@@ -57,10 +57,10 @@ class _Advancing:
 
 
 def collect_run(run: Path, pattern: str, step: str, outdir: Optional[Path], progress) -> Path:
-    """Collect the `asc` files of a single run folder into `<dated folder>_<run>.txt`."""
+    """Collect the `asc` files of a single run folder into `<dated folder>_<run>.dat` (TA layout)."""
     run = run.resolve()
     fnames = sorted((str(p) for p in run.glob(pattern)), key=frame_idx)
-    output = (outdir or run.parent) / f"{run.parent.name}_{run.name}.txt"
+    output = (outdir or run.parent) / f"{run.parent.name}_{run.name}.dat"
 
     logging.info("Loading %d files from: %s", len(fnames), rel(run))
     if progress is None:
@@ -73,7 +73,7 @@ def collect_run(run: Path, pattern: str, step: str, outdir: Optional[Path], prog
             progress.remove_task(task)
 
     logging.info("Saving to: %s", rel(output))
-    save_txt(str(output), *data)
+    write_dat(str(output), *data, header="layout: wl x t (TA .dat)")
     return output
 
 
@@ -123,10 +123,10 @@ def main(
     pbar: Annotated[bool, typer.Option("--pbar/--no-pbar", help="Show a progress bar.")] = True,
 ) -> None:
     """
-    Collects the `asc` files of each run into a single `<date>_<run>.txt` file.
+    Collects the `asc` files of each run into a single `<date>_<run>.dat` file (TA layout).
 
     Each argument is either a run folder, or a dated folder, in which case every `run*`
-    folder inside it is collected. For `260910/run01`, output is `260910/260910_run01.txt`.
+    folder inside it is collected. For `260910/run01`, output is `260910/260910_run01.dat`.
     """
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)

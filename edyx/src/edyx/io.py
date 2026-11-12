@@ -5,6 +5,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Axes of a trace (W, T) or a stack of traces (F, W, T). Negative, so they work for both.
+# FILE_AXIS = -3 raises on a 2D trace instead of silently averaging the wrong axis.
+FILE_AXIS = -3
+WL_AXIS = -2
+TIME_AXIS = -1
+
 
 def unpack_trace(data):
     """
@@ -12,9 +18,10 @@ def unpack_trace(data):
 
     Returns
     -------
-    t     (M,) np.ndarray
-    wl    (N,) np.ndarray
-    trace (M, N) np.ndarray
+    t     (T,) np.ndarray
+    wl    (W,) np.ndarray
+    trace (W, T) np.ndarray
+        Rows are wavelengths.
     """
     wl = data[1:,0]
     t = data[0,1:]
@@ -28,12 +35,12 @@ def pack_trace(t, wl, trace):
 
     Parameters
     ----------
-    t : (M,) np.ndarray
+    t : (T,) np.ndarray
         Times arrays
-    wl : (N,) np.ndarray
+    wl : (W,) np.ndarray
         Wavelength arrays
-    trace : (M,N) np.ndarray
-        Intensity trace
+    trace : (W, T) np.ndarray
+        Intensity trace. Rows are wavelengths.
     """
     packed = np.empty([i+1 for i in trace.shape])
     packed.fill(np.nan)
@@ -43,9 +50,72 @@ def pack_trace(t, wl, trace):
     return packed
 
 
-# TODO: read_ta_stack
+def write_dat(fname, t, wl, s, header="", fmt="%.6e"):
+    """
+    Write a TA `.dat` file: the inverse of `read_dat`.
 
-def read_ta_dat(fname, sort_t=True):
+    Masked points are written as NaN. Header lines are written as `#` comments
+    (`np.loadtxt` skips them).
+
+    Parameters
+    ----------
+    fname : str, path-like
+        Output file.
+    t : (T,) np.ndarray
+        Delays.
+    wl : (W,) np.ndarray
+        Wavelengths.
+    s : (W, T) np.ndarray
+        Signal. Rows are wavelengths.
+    header : str, optional
+        Header text, written as `#` comment lines.
+    fmt : str, optional
+        Format of each number.
+    """
+    filled = np.ma.filled(np.ma.asarray(s, dtype=float), np.nan)
+    np.savetxt(fname, pack_trace(t, wl, filled), fmt=fmt, header=header)
+
+
+def stack_traces(traces):
+    """
+    Stack traces sharing the same axes.
+
+    Parameters
+    ----------
+    traces : iterable of (t, wl, s)
+        Traces from any reader. Masks are kept if any `s` is a masked array.
+
+    Returns
+    -------
+    t : (T,) np.ndarray
+    wl : (W,) np.ndarray
+    stack : (F, W, T) np.ndarray
+        One trace per file.
+
+    Raises
+    ------
+    ValueError
+        If the delays or wavelengths differ between traces.
+
+    Examples
+    --------
+    >>> t, wl, stack = stack_traces(read_dat(fn) for fn in sorted(glob("s*.dat")))
+    """
+    traces = list(traces)
+    if not traces:
+        raise ValueError("No traces to stack.")
+    t, wl, _ = traces[0]
+    for i, (ti, wli, _) in enumerate(traces):
+        if np.shape(ti) != np.shape(t) or not np.allclose(ti, t):
+            raise ValueError(f"Delays of trace {i} differ from the first trace.")
+        if np.shape(wli) != np.shape(wl) or not np.allclose(wli, wl):
+            raise ValueError(f"Wavelengths of trace {i} differ from the first trace.")
+    ss = [s for _, _, s in traces]
+    if any(np.ma.isMaskedArray(s) for s in ss):
+        return t, wl, np.ma.stack(ss)
+    return t, wl, np.array(ss)
+
+def read_dat(fname, sort_t=True):
     "Read a `.dat` file TA measurement from OMAFEMTO."
     dat = np.loadtxt(fname)
     t = dat[0,1:]
@@ -145,6 +215,12 @@ def read_asc(fname):
     return np.loadtxt((ln for ln in contents[start:end].splitlines() if ln), delimiter=",")
 
 
+def _ascending_wl_t(delays, trace):
+    """Legacy (T, W) trace to the standard: sorted delays, (W, T)."""
+    order = np.argsort(delays, kind="stable")
+    return delays[order], trace[order].T
+
+
 def load_asc_series(fnames, step="first"):
     """
     Load a series of Andor Solis `asc` files. Computes the delays and wl.
@@ -160,11 +236,11 @@ def load_asc_series(fnames, step="first"):
 
     Returns
     -------
-    delays : (M,) np.ndarray
-        Delays, fs. Starts from 0.
-    wl : (N,) np.ndarray
+    delays : (T,) np.ndarray
+        Delays, as read from the files (or computed from `step`). Ascending.
+    wl : (W,) np.ndarray
         Wavelengths, nm.
-    trace : (M,N) np.ndarray
+    trace : (W, T) np.ndarray
         Signal intensity
     """
     # read the data
@@ -172,7 +248,8 @@ def load_asc_series(fnames, step="first"):
     nfiles = len(fnames)
     logger.debug(f"nfiles: {nfiles}")
     fnames = iter(fnames)
-    first = read_asc(next(fnames))
+    first_name = next(fnames)
+    first = read_asc(first_name)
     wl = first[:, 0]  # we are reading the first file twice, but whatever
     logger.debug(f"wl.size: {wl.size}")
     trace = [first[:,1]]
@@ -188,7 +265,7 @@ def load_asc_series(fnames, step="first"):
     if step == "first":
         delays = trace[:,0]
     elif step == "filename":
-        step = float(re.search(r"_s(\d+)_", fnames[0]).group(1))
+        step = float(re.search(r"_s(\d+)_", first_name).group(1))
         delays = np.arange(0, trace.shape[0])*step
     else:
         try:
@@ -197,10 +274,8 @@ def load_asc_series(fnames, step="first"):
             raise ValueError("step argument not understood. Must be a float, convertible to a float, or in "
                              "{'first', 'filename'}.")
         delays = np.arange(0, trace.shape[0]) * step
-    if delays[1]<delays[0]:
-        delays = delays[::-1]
-        trace = trace[::-1,:]
     assert trace.shape == (delays.size, wl.size)
+    delays, trace = _ascending_wl_t(delays, trace)
     return delays, wl, trace
 
 
@@ -208,6 +283,8 @@ def load_npz(fname):
     """
     Load data from an npz archive.
 
+    The file stores `delays`, `wl` and `trace` with `trace` as (T, W).
+
     Parameters
     ----------
     fname : str
@@ -215,27 +292,28 @@ def load_npz(fname):
 
     Returns
     -------
-    delays : (M,) np.ndarray
-        Delays, fs. Starts from 0.
-    wl : (N,) np.ndarray
+    delays : (T,) np.ndarray
+        Delays, as stored in the file. Ascending (reversed if stored descending).
+    wl : (W,) np.ndarray
         Wavelengths, nm.
-    trace : (M,N) np.ndarray
+    trace : (W, T) np.ndarray
         Signal intensity
     """
     df = np.load(fname)
     delays = df["delays"]
     trace = df["trace"]
     wl = df["wl"]
+    delays, trace = _ascending_wl_t(delays, trace)
     return delays, wl, trace
 
 
 def load_txt(fname):
     """
-    Load data from a ".txt" file.
+    Load data from a legacy FLUPS ".txt" file.
 
     The first element is discarded (ie: top left corner), the first column 
     contains the delays, the first row contains the wavelength, and the rest 
-    contains the signal intensity.
+    contains the signal intensity, as (T, W) in the file.
 
     Parameters
     ----------
@@ -244,48 +322,48 @@ def load_txt(fname):
 
     Returns
     -------
-    delays : (M,) np.ndarray
-        Delays, fs. Starts from 0.
-    wl : (N,) np.ndarray
+    delays : (T,) np.ndarray
+        Delays, as stored in the file. Ascending (reversed if stored descending).
+    wl : (W,) np.ndarray
         Wavelengths, nm.
-    trace : (M,N) np.ndarray
+    trace : (W, T) np.ndarray
         Signal intensity
     """
     cnt = np.loadtxt(fname)
     delays = cnt[1:,0]
     wl = cnt[0,1:]
     trace = cnt[1:,1:]
+    delays, trace = _ascending_wl_t(delays, trace)
     return delays, wl, trace
 
 
 def save_txt(fname, delays, wl, trace):
     """
-    Saves the data in a `.txt` file.
+    Saves the data in a legacy FLUPS `.txt` file.
 
     The first element is undefined, the first column contains the delays, the 
     first row contains the wavelengths and the rest contains the signal
-    intensity.
+    intensity, written as (T, W). `trace` is given in the standard (W, T)
+    orientation. See `write_dat` for the standard writer.
 
     Parameters
     ----------
     fname : str
         Path to the archive.
-    delays : (M,) np.ndarray
-        Delays, fs. Starts from 0.
-    wl : (N,) np.ndarray
+    delays : (T,) np.ndarray
+        Delays.
+    wl : (W,) np.ndarray
         Wavelengths, nm.
-    trace : (M,N) np.ndarray
+    trace : (W, T) np.ndarray
         Signal intensity
 
     See also
     --------
     edyx.io.load_txt
     """
-    cnt = np.full([s+1 for s in trace.shape], np.nan)
-    cnt[1:,0] = delays
-    cnt[0,1:] = wl
-    cnt[1:,1:] = trace
-    np.savetxt(fname, cnt, fmt="%.06g")
+    # pack_trace with the axes swapped gives the (T, W) layout
+    trace = np.ma.filled(np.ma.asarray(trace, dtype=float), np.nan).T  # masked -> NaN
+    np.savetxt(fname, pack_trace(wl, delays, trace), fmt="%.06g")
 
 # TODO: add support for Picoquant's phu files, via the phufile module.
 def read_oceanview(fname):
