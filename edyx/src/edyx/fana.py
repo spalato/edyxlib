@@ -2,6 +2,7 @@ import numpy as np
 from scipy.ndimage import median_filter, generic_filter
 from scipy.signal import medfilt2d
 from edyx.units import nm2cmi
+from edyx.tana import shift_trace  # shared with TA
 import os
 import toml
 import logging
@@ -162,46 +163,42 @@ def ref_spec_wl(wl, reference, database=default_ref_spectra):
     return ref_spec_wn(wnm, reference, database)*wl**2
 
 
-def shift_kin(t, y, t0):
-    return np.interp(t+t0, t, y, left=np.nan, right=np.nan)
-
-# TODO: do we have it in TANA?
-# TODO: add keyword: do we trim nans?
-def shift_trace(t, z, t0_corr):
-    """Correct trace using t0 curve.
+def fluo_wl(wl_u, gate=1340):
+    """Convert the detected (upconverted) wavelength to the fluorescence wavelength.
 
     Parameters
     ----------
-    t : (N,) np.ndarray
-        Original time axis
-    z : (M, N) np.ndarray
-        Signal, with M wavelength pixels and N timepoints.
-    t0_corr : (M,) np.ndarray
-        t0 correction curve, t0 for each pixel.
+    wl_u : array-like
+        Detected wavelength axis, in nm.
+    gate : float
+        Gate wavelength, in nm (1340 nm so far).
 
-    Resuts
-    ------
-    t_clip : (N') np.ndarray
-        Shifted time axis. Shorter due to removal of invalid pixels.
-    shifted : (M, N') np.ndarray
-        Signal trace, corrected for dispersion.
-
-    Notes
-    -----
-    Shifting the individual rows of the signal matrix results in invalid pixels
-    at the start and end. Spectra with invalid values are trimmed from the trace.
-    Therefore, the trace gets shorter along the time axis. The same operation
-    is performed on the time axis, yielding t_clip.
+    Returns
+    -------
+    ndarray
+        Fluorescence wavelength axis, in nm.
     """
-    assert z.shape == (t0_corr.size, t.size)
-    # Initialize an empty array
-    shifted = np.zeros_like(z, subok=False)
-    # Perform the shift for every wavelength
-    for i in range(z.shape[0]):
-        shifted[i,:] = shift_kin(t, z[i,:], t0_corr[i])
-    has_invalid = ~np.any(np.isnan(shifted), axis=0)
-    t_c = t.compress(has_invalid)
-    shifted = shifted.compress(has_invalid, axis=1)
-    return t_c, shifted
+    return 1 / (1 / wl_u - 1 / gate)
 
 
+def pcf_correct(wl, s, pcf_wl, pcf, left=None, right=None):
+    """Multiply by the photometric correction function (PCF), interpolated on `wl`.
+
+    Parameters
+    ----------
+    wl : (W,) ndarray
+        Wavelength axis of `s`.
+    s : (..., W, T) ndarray or masked array
+        Trace or stack.
+    pcf_wl, pcf : (N,) ndarray
+        Wavelengths (ascending) and values of the PCF.
+    left, right : float, optional
+        Passed to `np.interp`. Default holds the end values; use `np.nan` to
+        refuse extrapolation.
+
+    Returns
+    -------
+    (..., W, T) ndarray or masked array
+        Corrected data.
+    """
+    return s * np.interp(wl, pcf_wl, pcf, left=left, right=right)[:, np.newaxis]
