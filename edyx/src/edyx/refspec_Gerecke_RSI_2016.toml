@@ -1,0 +1,20 @@
+# Reference fluorescence spectra for photometric correction
+# Taken from Table S1 in:
+#    M. Gerecke, et al., Rev. Sci. Inst., 87, 053115 (2016).
+# The file lists the parameters for the spectra of each solvant. The spectra
+# are paramterized as a sum of lognormal functions. Each line contains the parameters
+# for a lognormal contribution. The parameters are:
+#    height, peak wavenumber (cm-1), width delta (cm-1) gamma
+# Independant variable are the wavenumbers.
+#BBOT = [ [ 0.1094, 24606.0, 593.0, 0.0825,],  # BBOT seems wrong: it has a fat tail on the blue edge...
+#         [ 0.5046, 24109.0, 2473.0, -0.855,],
+#		 [ 0.4131, 23088.0, 1038.0, -0.218,],
+#		 [ 0.2105, 21756.0, 1058.0, -0.0216,],
+#		 [ 0.2328, 21538.0, 3665.0, 0.5467,],
+#		 [ 0.0754, 19968.0, 3324.0, 0.5563,],]
+C6H = [ [ 0.7322, 21218.0, 2871.0, -0.2757,],
+        [ 0.3552, 22118.0, 2089.0, -0.1113,],]
+C153 = [ [ 0.9333, 18803.0, 3287.0, -0.2771,],
+         [ 0.1206, 19589.0, 1339.0, -0.076,],]
+DCM = [ [ 0.229, 15499.0, 2798.0, -0.1687,],
+        [ 0.7641, 15955.0, 2245.0, 0.0298,],]

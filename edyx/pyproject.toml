@@ -23,6 +23,7 @@ dependencies = [
     # TODO: add packages that are part of our "standard distribution""
     "scistyles",
     "colorcet",
+    "toml>=0.10.2",
 ]
 
 [project.scripts] # command line tools.
