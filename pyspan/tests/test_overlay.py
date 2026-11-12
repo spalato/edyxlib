@@ -121,9 +121,19 @@ def test_show_smoke():
     box = ov.show()
     assert isinstance(box, widgets.VBox)
     assert ov.fig.canvas in box.children
-    slider = box.children[0]
+    slider, button = box.children[0].children
     slider.value = t[12]
     assert ov.value == t[12]
+    button.click()  # autoscale
+
+
+def test_autoscale():
+    ov = Overlay(two(), ylim=(-100, 100))
+    ov.set_value(t[-1])  # B out of range: only A shown
+    ov.autoscale()
+    lo, hi = ov.ax.get_ylim()
+    y = A[:, -1]
+    assert lo < y.min() < y.min() + 0.1 * (hi - lo) and hi > y.max() > hi - 0.1 * (hi - lo)
 
 
 def test_invalid_mode():

@@ -30,20 +30,16 @@ def test_actions_and_mask():
     insp.set_file(1)
     insp.select(t[5], t[7])
     insp.reject_in_file()
-    insp.select(t[5], t[7])
-    insp.reject_in_all()
     insp.reject_file()
     insp.overlay.set_value(wl[3])
     insp.reject_wl_row()
-    assert insp.rejections == [
-        (1, None, (5, 8)), (None, None, (5, 8)), (1, None, None), (1, 3, None)]
+    assert insp.rejections == [(1, None, (5, 8)), (1, None, None), (1, 3, None)]
     np.testing.assert_array_equal(insp.mask, rejection_mask(shape, insp.rejections))
 
 
 def test_span_noop():
     insp = ScanInspector(t, wl, stack)
     insp.reject_in_file()
-    insp.reject_in_all()
     assert insp.rejections == []
     insp.select(t[5] + 1e-4, t[6] - 1e-4)
     assert insp.span is None
@@ -87,14 +83,8 @@ def test_single_file():
     insp = ScanInspector(t, wl, stack[:1])
     insp.select(t[3], t[4])
     insp.reject_in_file()
-    a = insp.mask
-    insp.select(t[3], t[4])
-    insp.reject_in_all()
-    np.testing.assert_array_equal(a[:, :, :], insp.mask)
-    insp2 = ScanInspector(t, wl, stack[:1])
-    insp2.select(t[3], t[4])
-    insp2.reject_in_all()
-    np.testing.assert_array_equal(insp2.mask, a)
+    assert insp.rejections == [(0, None, (3, 5))]
+    assert insp.mask[0, :, 3:5].all() and insp.mask.sum() == wl.size * 2
 
 
 def test_input_mask_kept():

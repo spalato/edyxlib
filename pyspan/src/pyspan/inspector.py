@@ -119,22 +119,15 @@ class ScanInspector:
         else:
             self.span = (start, stop)
 
-    def _reject_span(self, file):
+    def reject_in_file(self):
+        """Reject the selected delays in the current file (all wavelengths)."""
         if self.span is None:
             logger.warning("no selection")
             return
-        self._add((file, None, self.span))
+        self._add((self.current, None, self.span))
         self.span = None
         if hasattr(self, "_span_selector"):
             self._span_selector.clear()
-
-    def reject_in_file(self):
-        """Reject the selected delays in the current file (all wavelengths)."""
-        self._reject_span(self.current)
-
-    def reject_in_all(self):
-        """Reject the selected delays in all files (all wavelengths)."""
-        self._reject_span(None)
 
     def reject_file(self):
         """Reject the whole current file."""
@@ -198,7 +191,6 @@ class ScanInspector:
 
         actions = [
             ("Reject in file", self.reject_in_file),
-            ("Reject in all files", self.reject_in_all),
             ("Reject file", self.reject_file),
             ("Reject wl row", self.reject_wl_row),
             ("Undo", self.undo),

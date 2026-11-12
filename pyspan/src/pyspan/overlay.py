@@ -46,7 +46,7 @@ class Overlay:
     lines : dict
         `{label: Line2D}`.
     """
-
+    # TODO: add integer index alongside value time / wavelength value.
     def __init__(self, traces, mode="spectra", value=None, ylim=None, ylabel=None):
         if mode not in _MODES:
             raise ValueError(f"mode must be one of {list(_MODES)}, got {mode!r}")
@@ -114,11 +114,24 @@ class Overlay:
         self.traces[label] = (t, wl, s)
         self.redraw()
 
+    def autoscale(self):
+        """Fit the y limits to the lines currently shown (5% margin)."""
+        y = np.concatenate([line.get_ydata() for line in self.lines.values()])
+        y = y[np.isfinite(y)]
+        if y.size == 0:
+            return
+        lo, hi = y.min(), y.max()
+        pad = 0.05 * (hi - lo) or 0.5 * abs(hi) or 1.0
+        self.ax.set_ylim(lo - pad, hi + pad)
+        self.fig.canvas.draw_idle()
+
     def show(self):
-        """Build the slider and return `VBox([slider, canvas])`."""
+        """Build the slider and the autoscale button, return a `VBox` with the canvas."""
         slider = widgets.SelectionSlider(
             options=[(f"{x:.4g}", x) for x in self.grid], value=self.value,
             description=self._name, continuous_update=True,
         )
         slider.observe(lambda ch: self.set_value(ch["new"]), names="value")
-        return widgets.VBox([slider, self.fig.canvas])
+        button = widgets.Button(description="Autoscale")
+        button.on_click(lambda _: self.autoscale())
+        return widgets.VBox([widgets.HBox([slider, button]), self.fig.canvas])
