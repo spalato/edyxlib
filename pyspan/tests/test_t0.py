@@ -138,3 +138,11 @@ def test_show_smoke():
     buttons["Delete point"].click()
     assert p.points.shape == (0, 2)
     buttons["Done"].click()
+
+
+def test_tlim():
+    y = s.copy()
+    y[0, t > 2] = 1e3  # large values outside tlim must not set the y scale
+    p = T0Picker(t, wl, y, tlim=(-1, 2))
+    assert p.ax_kin.get_xlim() == (-1, 2) and p.ax_map.get_xlim() == (-1, 2)
+    assert p.ax_kin.get_ylim()[1] < 1e3

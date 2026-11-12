@@ -48,10 +48,9 @@ class Linear:
     fnames: list, len(fnames)==L
         List of filenames
     threshold : float or (L,) array, optional
-        RMSD thresholds, e.g. pasted from the output of "Done". Given, they are
-        applied at once. Default: mean + 3.5 std of the RMSD of each file, shown
-        but applied to a file only once its threshold is edited or the file is
-        selected in the dropdown (legacy behaviour).
+        RMSD thresholds, e.g. pasted from the output of "Done". Default: mean +
+        3.5 std of the RMSD of each file. Applied at once to all files; a large
+        value rejects nothing.
 
     """
     wl: npt.NDArray = field(factory=lambda: np.empty((0,))) # ensure 1D
@@ -91,10 +90,9 @@ class Linear:
         if np.size(self.threshold) == 0:
             # reasonable default threshold
             self.threshold = np.round(self.rmsd.mean(axis=1)+3.5*self.rmsd.std(axis=1), 2)
-        else:
-            L = self.od.shape[0]
-            self.threshold = np.broadcast_to(np.asarray(self.threshold, dtype=float), (L,)).copy()
-            self.od.mask[:] = (self.rmsd > self.threshold[:, np.newaxis])[:, np.newaxis, :]
+        L = self.od.shape[0]
+        self.threshold = np.broadcast_to(np.asarray(self.threshold, dtype=float), (L,)).copy()
+        self.od.mask[:] = (self.rmsd > self.threshold[:, np.newaxis])[:, np.newaxis, :]
         # if self.autorun:
         #     self.rmsd = calc_rmsd(self.od.data)
         #     return self.plot()

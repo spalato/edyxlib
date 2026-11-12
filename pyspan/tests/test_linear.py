@@ -43,11 +43,6 @@ def test_calc_rmsd_is_rmsd_vs_median(lin):
     np.testing.assert_array_equal(lin.rmsd, rmsd_vs_median(lin.od, axis=-1))
 
 
-def test_default_threshold_not_applied(lin):
-    # legacy behaviour: the default threshold is shown, applied only when changed
-    assert not lin.od.mask.any()
-
-
 def test_threshold_given_is_applied():
     rng = np.random.default_rng(0)
     od = rng.normal(size=(L, M, N))
@@ -83,17 +78,23 @@ def test_from_files_forwards_threshold(monkeypatch):
     assert lin.od.mask.any()
 
 
-def test_default_threshold_applied_on_visit():
-    # Legacy behaviour, pinned until SP decides: the default threshold of a file is
-    # applied only once that file is selected in the dropdown.
+def test_default_threshold_applied_at_once(capsys):
+    # The default threshold applies to all files at once, visited or not, so the
+    # "Done" literal reproduces the session.
     rng = np.random.default_rng(0)
     od = rng.normal(size=(L, M, N))
     od[:, :, 7] += 5  # one outlier repetition per file
     lin = Linear(wl=np.linspace(400, 700, M), od=od, fnames=["a", "b"])
+    expected = np.zeros((L, M, N), dtype=bool)
+    expected[:, :, 7] = True
+    np.testing.assert_array_equal(lin.od.mask, expected)
     lin.plot()
-    assert not lin.od.mask.any()
     lin.file_select.value = "b"
-    np.testing.assert_array_equal(lin.od.mask.any(axis=(1, 2)), [False, True])
     lin.file_select.value = "a"
-    np.testing.assert_array_equal(lin.od.mask.any(axis=(1, 2)), [True, True])
+    np.testing.assert_array_equal(lin.od.mask, expected)
+    lin.done()
+    ns = {"np": np}
+    exec(capsys.readouterr().out, ns)
+    again = Linear(wl=lin.wl, od=od, fnames=["a", "b"], threshold=ns["threshold"])
+    np.testing.assert_array_equal(again.od.mask, expected)
     plt.close("all")

@@ -32,6 +32,9 @@ class T0Picker:
         Number of wavelength rows moved by `next` and `prev`.
     clim : (float, float), optional
         Colour limits of the map. Default: symmetric, 99th percentile of `abs(s)`.
+    tlim : (float, float), optional
+        Delay range shown (both panels); the kinetic y axis fits the trace in this
+        range. Default: all delays.
     auto_next : bool
         After a click, go to the next row (`step` rows on). Also a checkbox.
 
@@ -44,13 +47,16 @@ class T0Picker:
     fig, ax_map, ax_kin : matplotlib Figure and Axes
     """
 
-    def __init__(self, t, wl, s, points=None, step=10, clim=None, auto_next=False):
+    def __init__(self, t, wl, s, points=None, step=10, clim=None, tlim=None,
+                 auto_next=False):
         self.t = np.asarray(t, dtype=float)
         self.wl = np.asarray(wl, dtype=float)
         self.s = np.ma.filled(np.ma.asarray(s, dtype=float), np.nan)
         self.step = int(step)
         self.auto_next = bool(auto_next)
         self.current = 0
+        lo, hi = (self.t.min(), self.t.max()) if tlim is None else tlim
+        self._in_tlim = (self.t >= lo) & (self.t <= hi)
         self._points = [] if points is None else [
             [float(a), float(b)] for a, b in np.asarray(points, dtype=float).reshape(-1, 2)
         ]
@@ -69,6 +75,9 @@ class T0Picker:
         (self._trace,) = self.ax_kin.plot(self.t, self.s[0])
         self._t0_line = self.ax_kin.axvline(0, color="r", visible=False)
         self.ax_kin.set_xlabel("delay / ps")
+        if tlim is not None:
+            self.ax_map.set_xlim(tlim)
+            self.ax_kin.set_xlim(tlim)
         self._click_id = None
         self._update_points()
         self.set_row(0)
@@ -91,7 +100,7 @@ class T0Picker:
         self.current = int(np.clip(i, 0, self.wl.size - 1))
         y = self.s[self.current]
         self._trace.set_ydata(y)
-        good = y[np.isfinite(y)]
+        good = y[self._in_tlim & np.isfinite(y)]
         if good.size:
             pad = 0.05 * (good.max() - good.min()) or 1.0
             self.ax_kin.set_ylim(good.min() - pad, good.max() + pad)
