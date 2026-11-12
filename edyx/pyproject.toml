@@ -1,6 +1,6 @@
 [project]
 name = "edyx"
-version = "0.1.0"
+version = "0.2.0"
 description = "Core data I/O, analysis, and plotting utilities for the lab"
 readme = "README.md"
 requires-python = ">=3.11"
