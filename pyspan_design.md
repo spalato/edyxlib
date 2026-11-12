@@ -1,7 +1,7 @@
 # pyspan rewrite: use cases and plan
 
-Draft 2026-11-12, for review (answer inline with `> SP:`). Use cases and decisions agreed;
-the plan at the end is for review before implementation.
+Status: implemented on branch `feature-pyspan` (2026-11-12), steps 1-8 of the plan
+below. Changes made during implementation are listed under "Implemented".
 
 ## Scope
 
@@ -232,6 +232,22 @@ Each step ends with tests passing and a commit. Executors write code; I review.
    s44, stored t0 points), and the comparison viewer on the FLUPS example.
 8. **Docs**: README (install into `edyxenv`, `%matplotlib widget`), and the TA
    design doc updated.
+
+### Implemented (2026-11-12)
+
+Differences from the plan, from review and user testing:
+- `Overlay`: the view (spectra or kinetics) is set at construction, no toggle. An
+  "Autoscale" button fits the y axis to the curves shown (user request).
+- `ScanInspector`: kinetics view only. "Reject in all files" removed (user request);
+  `(None, ...)` literals are still accepted in `rejections=`. Reject without a
+  selection does nothing (warning); the selection is cleared after each reject.
+  Default threshold with `rmsd`: `max(rmsd)`, which rejects nothing.
+- `T0Picker`: points kept in click order (the stored 53 points come back unchanged).
+  One point per wavelength row; clicking again moves it. Clicks are ignored in
+  zoom/pan mode.
+- `Linear`: `threshold=` input, applied at once. Open question for SP: the default
+  threshold is shown but applied only once changed (legacy behaviour, kept).
+- Checked in JupyterLab and VS Code by SP: widgets, span selection, clicks.
 
 ### Not in this round
 

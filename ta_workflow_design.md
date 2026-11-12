@@ -427,7 +427,8 @@ Remaining:
 - Notebook templates (TA, FLUPS) as short sequences of calls.
 
 5. `pyspan`: comparison slicer, then `ScanInspector` (cell 15 + range rejection,
-   including wavelength rows), returning a mask.
+   including wavelength rows), returning a mask. Done 2026-11-12 (`Overlay`,
+   `ScanInspector`, `T0Picker`; see `pyspan_design.md`).
 6. `T0Curve`: user-chosen model, weighted fit from points, two point sources (clicks,
    dye fits), save/load once the storage question is settled.
 7. Regression test: reproduce the 250709 `.dat` outputs (run in env `main`). Add
