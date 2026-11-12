@@ -7,7 +7,8 @@ from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 import ipywidgets as widgets
 from edyx.io import read_ab_stack
 from attrs import define, field
-from scipy.spatial.distance import cdist
+
+from pyspan.decisions import format_literal, rmsd_vs_median
 
 logger = logging.getLogger(__name__)
 
@@ -28,13 +29,7 @@ def calc_rmsd(od):
     rmsd : (L, N) np.ndarray
         Root-mean square difference of individual spectra vs the median for that file.
     """
-    logger.debug("Computing rmsd.")
-    med = np.median(od, axis=2)
-    rmsd = np.array([
-        cdist(od[i, :, :].T, [med[i, :]], metric="euclidean", )
-        for i in range(od.shape[0])])
-    logger.debug("calc_rmsd rmsd.shape: %r", rmsd.shape)
-    return rmsd.reshape(rmsd.shape[:-1])
+    return rmsd_vs_median(od, axis=-1)
 
 
 @define
@@ -52,7 +47,10 @@ class Linear:
         Optical density for L files, M wavelenghts and N repetitions.
     fnames: list, len(fnames)==L
         List of filenames
-
+    threshold : float or (L,) array, optional
+        RMSD thresholds, e.g. pasted from the output of "Done". Given, they are
+        applied at once. Default: mean + 3.5 std of the RMSD of each file, shown
+        but applied only once the threshold is changed (legacy behaviour).
 
     """
     wl: npt.NDArray = field(factory=lambda: np.empty((0,))) # ensure 1D
@@ -72,6 +70,8 @@ class Linear:
     threshold = field(factory=lambda: np.empty((0,)))
     thresh_line = field(init=False, repr=False)
     ascale_btn = field(init=False, repr=False)
+    done_btn = field(init=False, repr=False)
+    done_out = field(init=False, repr=False)
     ctrl_lyt = field(init=False, repr=False)
     main_lyt = field(init=False, repr=False)
 
@@ -87,8 +87,13 @@ class Linear:
         self.rmsd = calc_rmsd(self.od.data)
         logger.debug("od shape: %r", self.od.shape)
         logger.debug("rmsd shape: %r", self.rmsd.shape)
-        # reasonable default threshold
-        self.threshold = np.round(self.rmsd.mean(axis=1)+3.5*self.rmsd.std(axis=1), 2)
+        if np.size(self.threshold) == 0:
+            # reasonable default threshold
+            self.threshold = np.round(self.rmsd.mean(axis=1)+3.5*self.rmsd.std(axis=1), 2)
+        else:
+            L = self.od.shape[0]
+            self.threshold = np.broadcast_to(np.asarray(self.threshold, dtype=float), (L,)).copy()
+            self.od.mask[:] = (self.rmsd > self.threshold[:, np.newaxis])[:, np.newaxis, :]
         # if self.autorun:
         #     self.rmsd = calc_rmsd(self.od.data)
         #     return self.plot()
@@ -120,10 +125,12 @@ class Linear:
         )
         #   Rescale button
         self.ascale_btn = widgets.Button(description="Rescale", icon="arrows-alt-v")
+        self.done_btn = widgets.Button(description="Done")
+        self.done_out = widgets.Output()
 
         # Setup layout
-        self.ctrl_lyt = widgets.HBox([self.file_select, self.idx, self.thresh_widget, self.ascale_btn])
-        self.main_lyt = widgets.VBox([self.ctrl_lyt, self.fig.canvas])
+        self.ctrl_lyt = widgets.HBox([self.file_select, self.idx, self.thresh_widget, self.ascale_btn, self.done_btn])
+        self.main_lyt = widgets.VBox([self.ctrl_lyt, self.fig.canvas, self.done_out])
 
         # Generate curves
         self.curves = self.ax_spec.plot(self.wl, self.od.data[self.file_select.index, :, self.idx.value])
@@ -141,6 +148,7 @@ class Linear:
         self.thresh_line = self.ax_rmsd.axhline(self.thresh_widget.value, color="r", lw=0.8, ls="--")
         # Connect widgets to callbacks
         self.ascale_btn.on_click(self.autoscale)
+        self.done_btn.on_click(self._on_done)
         self.file_select.observe(self._update, names="value")
         self.idx.observe(self._update, names="value")
         self.thresh_widget.observe(self.on_thresh_change, names="value")
@@ -192,11 +200,20 @@ class Linear:
             logger.debug(f"Threshold value:{thresh}")
         # sync with record
         self.threshold[fidx] = thresh
+        logger.info("threshold[%d] (%s) = %r", fidx, self.fnames[fidx] if self.fnames else fidx, thresh)
         # determine if it is bad.
         isbad = self.rmsd[fidx, :] > thresh
         self.od.mask[fidx, :, :] = np.broadcast_to(isbad[np.newaxis, :], self.od.shape[1:])
         self.thresh_line.set_ydata([thresh, thresh])
         self._update(redraw_all=True)
+
+    def done(self):
+        """Print the thresholds as code to paste in a cell (`Linear(..., threshold=...)`)."""
+        print(format_literal("threshold", self.threshold))
+
+    def _on_done(self, *_):
+        with self.done_out:
+            self.done()
 
     def autoscale(self, *args):
         dat = self.od[self.file_select.index]

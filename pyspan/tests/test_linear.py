@@ -36,3 +36,37 @@ def test_plot_smoke(lin):
     assert lin.od.mask[0].all() and not lin.od.mask[1].any()
     assert lay is lin.main_lyt
     plt.close("all")
+
+
+def test_calc_rmsd_is_rmsd_vs_median(lin):
+    from pyspan.decisions import rmsd_vs_median
+    np.testing.assert_array_equal(lin.rmsd, rmsd_vs_median(lin.od, axis=-1))
+
+
+def test_default_threshold_not_applied(lin):
+    # legacy behaviour: the default threshold is shown, applied only when changed
+    assert not lin.od.mask.any()
+
+
+def test_threshold_given_is_applied():
+    rng = np.random.default_rng(0)
+    od = rng.normal(size=(L, M, N))
+    lin = Linear(wl=np.linspace(400, 700, M), od=od, fnames=["a", "b"], threshold=[7.0, 1e9])
+    bad = lin.rmsd[0] > 7.0
+    assert bad.any() and not bad.all()
+    np.testing.assert_array_equal(lin.od.mask[0], np.broadcast_to(bad, (M, N)))
+    assert not lin.od.mask[1].any()
+    s = Linear(wl=np.linspace(400, 700, M), od=od, fnames=["a", "b"], threshold=7.0)
+    np.testing.assert_array_equal(s.threshold, [7.0, 7.0])
+
+
+def test_done_round_trip(lin, capsys):
+    lin.plot()
+    lin.thresh_widget.value = 5.0
+    lin.done()
+    ns = {"np": np}
+    exec(capsys.readouterr().out, ns)
+    again = Linear(wl=lin.wl, od=lin.od.data, fnames=lin.fnames, threshold=ns["threshold"])
+    np.testing.assert_array_equal(again.od.mask, lin.od.mask)
+    lin.done_btn.click()
+    plt.close("all")

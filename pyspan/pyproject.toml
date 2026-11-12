@@ -19,7 +19,6 @@ dependencies = [
     "ipympl",
     "matplotlib",
     "numpy",
-    "scipy",
     "attrs",
 ]
 
@@ -39,4 +38,5 @@ testpaths = ["tests"]
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "scipy>=1.17.1",
 ]
