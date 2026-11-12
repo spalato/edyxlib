@@ -1,7 +1,7 @@
 # pyspan rewrite: use cases and plan
 
-Draft 2026-11-12, for review (answer inline with `> SP:`). Use cases first; the build plan
-at the end is only a sketch until the use cases are agreed.
+Draft 2026-11-12, for review (answer inline with `> SP:`). Use cases and decisions agreed;
+the plan at the end is for review before implementation.
 
 ## Scope
 
@@ -42,6 +42,9 @@ replaces, and the evidence.
   - wavelength rows in one file (`[-1, [282, 283], :]`, a cosmic in the background).
 - **Output**: the boolean mask (F, W, T) for `np.ma.masked_array`. Also the list of
   rejections as a literal, so the notebook can be re-run without clicking (UC5).
+- **RMSD threshold** (decided 2026-11-12: available everywhere): an optional panel
+  shows the RMSD of each spectrum against the median of the files, with a threshold.
+  Rejections above the threshold join the manual ones.
 - **Replaces**: the kinetic overlay cell with its range slider (TA cell 15, FLUPS
   cell 24) and the manual masking cells that follow it.
 - **Evidence**: did all the rejection work in 250709 (RMSD disabled in 9 of 11
@@ -73,9 +76,9 @@ replaces, and the evidence.
   existing points to review: the clicked points of an earlier session, or FLUPS dye
   fits with errors.
 - **Interaction**: step through wavelengths (every n-th), click the t0 on the kinetic
-  trace, see the points on the map, delete or move a point. Optionally see a fitted
-  curve and the shifted map.
-- **Output**: points `(wl, t0)` as an array, plus the fitted curve if a fit is shown.
+  trace, see the points on the map, delete or move a point.
+- **Output**: points only (decided 2026-11-12), as an array of `(wl, t0)` rows. The fit
+  is a separate step in the notebook, with the model the user chooses.
 - **Replaces**: TA cells 27-29 (the largest cell in the notebook, globals and callbacks).
 - **Evidence**: in every TA template; notes to self ask for fit and shift buttons, and
   a two-panel display.
@@ -110,6 +113,9 @@ replaces, and the evidence.
   ```python
   rejections = [(4, None, (221, 222)), (None, None, (253, None))]
   ```
+  - Index-based (decided 2026-11-12). Each rejection is `(file, wl, t)`; each entry is
+    `None` (all), an index, or a `(start, stop)` range, stop excluded, as in a Python
+    slice. The examples above: delay 221 of file 4; delays from 253 on, in all files.
   - Printed once, on a "Done" button (or when the tool is closed), not on every click.
   - Each edit is also logged (`logging`, INFO level), so a trail exists in the cell
     output when the user wants it.
@@ -123,9 +129,10 @@ replaces, and the evidence.
 - **Problem**: old notebooks import `pyspan.io.read_ta_dat`, `pyspan.utils.*`,
   `pyspan.itos` and `from pyspan import Linear`. A new package with the same name breaks
   these imports.
-- **Options**: thin shims (`pyspan.io` re-exporting `edyx.io`, with `read_ta_dat` as an
-  alias) for a transition period, or a clean break with a note in the README. The user
-  decides (open question 3).
+- **Decided** (2026-11-12): legacy compatibility imports. `pyspan.io`, `pyspan.utils`
+  and `pyspan.itos` re-export the `edyx` functions under their old names
+  (`read_ta_dat` is identical to `edyx.io.read_dat`), with a `FutureWarning` naming
+  the new import. `from pyspan import Linear` keeps working.
 
 ## Requirements across use cases
 
@@ -149,30 +156,85 @@ replaces, and the evidence.
 - Downstream figures (transient spectra, kinetics, band integrals): static matplotlib.
   The 250709 analysis notebooks use `%matplotlib widget` only for zoom.
 
-## Open questions
+## Decisions (2026-11-12)
 
-1. **t0 fit in the picker**: does the picker show a fitted curve and the shifted map? The
-   model is a scientific choice and `T0Curve` is deferred. Options:
-   - (a) points only; the fit is a separate `edyx` call;
-   - (b) the user passes a fit function (`fit(wl, t0) -> callable`), and the picker
-     shows the curve and the shifted map.
-2. ~~**RMSD threshold view**: keep it for TA and FLUPS stacks, or only for linear
-   spectra?~~ Answered (2026-11-12): linear spectra only (UC4), where it works. TA and
-   FLUPS rely on manual rejection (UC1).
-3. **Old notebooks**: shims for a transition, or a clean break?
-4. **Rejection literal**: index-based (file, wl index range, t index range), or
-   value-based (file, wl range in nm, t range in ps)? Values survive a crop or a
-   different grid; indices are exact.
-5. **Display backend**: ipywidgets with ipympl as now, or the native matplotlib
-   window for some tools (cheap and robust, noted in the TA design doc)?
+1. t0 picker: points only. The fit is a separate notebook step.
+2. RMSD threshold view: available for all (TA, FLUPS stacks and linear spectra).
+3. Old notebooks: legacy compatibility imports (UC6).
+4. Rejection literal: index-based (UC5).
+5. Display: ipywidgets with ipympl (`%matplotlib widget`).
 
-## Plan sketch (after the use cases are agreed)
+## Plan
 
-1. Package skeleton: `pyspan/` with its own `pyproject.toml` and `uv.lock`,
-   depending on `edyx>=0.2`, `ipywidgets`, `ipympl`.
-2. Shared overlay view with a slider (UC2), then selection and rejection on top of it
-   (UC1, UC5).
-3. t0 picker (UC3), checked against the 250709 clicked points.
-4. `Linear` port with minimal change (UC4).
-5. Shims or README note (UC6).
-6. Example notebooks using the `edyx/examples/data` files.
+### Package
+
+```
+pyspan/
+├── pyproject.toml      # uv_build, Python >= 3.11, version 0.3.0 (legacy was 0.2)
+├── uv.lock
+├── src/pyspan/
+│   ├── __init__.py     # Linear, ScanInspector, Overlay, T0Picker
+│   ├── decisions.py    # rejection literal -> mask, RMSD, printing of literals
+│   ├── overlay.py      # UC2
+│   ├── inspector.py    # UC1 (+ RMSD panel)
+│   ├── t0.py           # UC3
+│   ├── linear.py       # UC4, ported Linear
+│   ├── io.py, utils.py, itos.py   # UC6, legacy re-exports only
+├── tests/
+└── examples/
+```
+
+- Dependencies: `edyx>=0.2`, `ipywidgets>=8`, `ipympl`, `matplotlib`, `numpy`,
+  `attrs` (kept for the `Linear` port). Dev: `pytest`. During development, `edyx` is
+  taken from `../edyx` (editable path source).
+- The legacy env pinned `ipywidgets<8`. The new one uses current JupyterLab 4,
+  ipywidgets 8 and ipympl; to be checked on a lab machine early (step 1).
+
+### Shape of each tool
+
+- Logic in plain functions (`decisions.py`): no widgets, unit tested.
+- One small class per tool. It holds the data and the decisions, has one method per
+  user action (`reject(...)`, `add_point(...)`, `done()`), and builds its widgets in
+  a `show()` method. Tests call the action methods with the Agg backend; only
+  `show()` needs a browser.
+- Each tool accepts its earlier decisions (`rejections=`, `points=`) and prints them
+  as a literal on "Done". Edits are logged at INFO level.
+
+### `decisions.py`
+
+- `rejection_mask(shape, rejections)`: boolean (F, W, T) mask from the literal.
+- `rmsd_vs_median(data, axis)`: RMSD of each spectrum against the median along
+  `axis` (files for TA and FLUPS, repetitions for linear spectra).
+- `above_threshold(rmsd, threshold)`: rejections for the spectra above a threshold.
+- `format_literal(name, value)`: `name = [...]` text, arrays included, ready to paste.
+
+### Steps
+
+Each step ends with tests passing and a commit. Executors write code; I review.
+
+1. **Skeleton and legacy imports** (UC6). `pyproject.toml`, `uv.lock`, the
+   re-export modules with a `FutureWarning`, `Linear` moved over unchanged. Test: the
+   imports used by the old notebooks work (`read_ta_dat`, `pack_trace`, `between`,
+   `nm2ev`, `load_itos_spectrum`, `Linear`). Check `%matplotlib widget` in JupyterLab.
+2. **`decisions.py`** with tests, including the four rejection forms from 250709.
+3. **`Overlay`** (UC2): datasets with their own axes, spectra or kinetics mode, slider
+   by value. Replaces `spectra_view` and `transients_view`.
+4. **`ScanInspector`** (UC1): `Overlay` on one stack, a delay span selector, buttons
+   "reject in this file", "reject in all files", "reject file", "reject wl rows",
+   an undo, the optional RMSD panel, "Done".
+5. **`T0Picker`** (UC3): wavelength stepping, click to add, delete, existing points
+   shown, "Done". Acceptance: opened with the 53 points of `s2027_t0corr.npz`, "Done"
+   returns them unchanged, and a cubic fit in eV in the notebook gives the stored
+   `pol_coeff`.
+6. **`Linear`** (UC4): use `decisions.rmsd_vs_median`, add printing of thresholds on
+   "Done". The linear notebook stays unchanged.
+7. **Examples**: TA rejection and t0 review on the `edyx/examples/data` files (s40,
+   s44, stored t0 points), and the comparison viewer on the FLUPS example.
+8. **Docs**: README (install into `edyxenv`, `%matplotlib widget`), and the TA
+   design doc updated.
+
+### Not in this round
+
+- Sidecar files (decisions are printed literals for now).
+- Assisted t0 picking, t0 fits (`T0Curve`).
+- Outlier tests for 1 or 2 files.
