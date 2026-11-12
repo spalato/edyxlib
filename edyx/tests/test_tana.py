@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 from scipy.special import erf
-from edyx.tana import (load_itos_spectrum, shift_trace, crop, subtract_pre_t0,
-                       avg_scans, avg_spectra)
+from edyx.tana import (load_itos_spectrum, shift_kin, shift_trace, crop,
+                       subtract_pre_t0, avg_scans, avg_spectra)
 
 
 def test_load_itos_spectrum_finds_file():
@@ -37,6 +37,14 @@ def test_shift_trace_clip_matches_old(data):
     np.testing.assert_array_equal(t_new, t_old)
     np.testing.assert_array_equal(out, ref)
     assert not isinstance(out, np.ma.MaskedArray)
+
+
+def test_shift_kin(data):
+    t, wl, t0, s = data
+    old = np.interp(t + t0[0], t, s[0], left=np.nan, right=np.nan)  # fana.shift_kin, before removal
+    np.testing.assert_array_equal(shift_kin(t, s[0], t0[0]), old)
+    _, out = shift_trace(t, s, t0, edges="nan")
+    np.testing.assert_array_equal(out[3], shift_kin(t, s[3], t0[3]))
 
 
 def test_shift_trace_sign(data):

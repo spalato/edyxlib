@@ -6,6 +6,7 @@ from edyx.fana import fluo_wl, pcf_correct
 
 def test_shift_trace_is_shared():
     assert edyx.fana.shift_trace is edyx.tana.shift_trace
+    assert edyx.fana.shift_kin is edyx.tana.shift_kin
 
 
 def test_fluo_wl():

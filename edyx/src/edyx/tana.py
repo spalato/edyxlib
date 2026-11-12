@@ -99,11 +99,33 @@ def band_average(wl, z, bounds):
 
 # ══════════════════════════  TRACE PROCESSING  ═════════════════════════════
 
+def shift_kin(t, y, t0):
+    """Shift one kinetic trace: the feature at delay `t0` moves to delay 0.
+
+    Linear interpolation, NaN outside the measured range.
+
+    Parameters
+    ----------
+    t : (T,) ndarray
+        Delay axis, ascending.
+    y : (T,) ndarray
+        Kinetic trace (one wavelength).
+    t0 : float
+        Time-zero of this trace.
+
+    Returns
+    -------
+    (T,) ndarray
+        Shifted trace, on the same delays `t`.
+    """
+    return np.interp(t + t0, t, y, left=np.nan, right=np.nan)
+
+
 def shift_trace(t, s, t0, edges="clip"):
     """Time-zero correction of a trace, one shift per wavelength.
 
-    A feature at delay ``t0[i]`` in row ``i`` is moved to delay 0, by linear
-    interpolation: ``out[i] = interp(t + t0[i], t, s[i])``.
+    A feature at delay ``t0[i]`` in row ``i`` is moved to delay 0:
+    ``out[i] = shift_kin(t, s[i], t0[i])``.
 
     Parameters
     ----------
@@ -138,7 +160,7 @@ def shift_trace(t, s, t0, edges="clip"):
     data = np.ma.filled(np.ma.asarray(s, dtype=float), np.nan) if masked else s
     out = np.empty(s.shape, dtype=float)
     for i in range(s.shape[0]):
-        out[i] = np.interp(t + t0[i], t, data[i], left=np.nan, right=np.nan)
+        out[i] = shift_kin(t, data[i], t0[i])
     if masked:
         out = np.ma.masked_invalid(out)
     if edges == "nan":

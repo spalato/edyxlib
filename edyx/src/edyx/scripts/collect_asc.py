@@ -7,7 +7,7 @@ import typer
 from rich.logging import RichHandler
 from rich.progress import Progress
 
-from edyx.io import load_asc_series, write_ta_dat
+from edyx.io import load_asc_series, write_dat
 
 logging.basicConfig(level=logging.INFO, handlers=[RichHandler()], format="%(message)s")
 
@@ -73,7 +73,7 @@ def collect_run(run: Path, pattern: str, step: str, outdir: Optional[Path], prog
             progress.remove_task(task)
 
     logging.info("Saving to: %s", rel(output))
-    write_ta_dat(str(output), *data, header="layout: wl x t (TA .dat)")
+    write_dat(str(output), *data, header="layout: wl x t (TA .dat)")
     return output
 
 

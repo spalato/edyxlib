@@ -6,10 +6,10 @@ from edyx.io import (
     load_asc_series,
     load_npz,
     load_txt,
-    read_ta_dat,
+    read_dat,
     save_txt,
     stack_traces,
-    write_ta_dat,
+    write_dat,
 )
 
 T = np.array([0.0, 1.0, 2.0, 3.0])
@@ -22,19 +22,19 @@ def write_asc(path, wl, signal):
     path.write_text(rows + "\n\n\nDate and Time: x\n")
 
 
-def test_ta_dat_round_trip(tmp_path):
+def test_dat_round_trip(tmp_path):
     fn = tmp_path / "a.dat"
-    write_ta_dat(fn, T, WL, S)
-    t, wl, s = read_ta_dat(fn)
+    write_dat(fn, T, WL, S)
+    t, wl, s = read_dat(fn)
     assert np.allclose(t, T) and np.allclose(wl, WL) and np.allclose(s, S)
 
 
-def test_ta_dat_masked_and_header(tmp_path):
+def test_dat_masked_and_header(tmp_path):
     fn = tmp_path / "a.dat"
     m = np.ma.masked_array(S, mask=np.zeros_like(S, dtype=bool))
     m[1, 2] = np.ma.masked
-    write_ta_dat(fn, T, WL, m, header="some header\nsecond line")
-    t, wl, s = read_ta_dat(fn)
+    write_dat(fn, T, WL, m, header="some header\nsecond line")
+    t, wl, s = read_dat(fn)
     assert np.isnan(s[1, 2])
     s[1, 2] = S[1, 2]
     assert np.allclose(s, S)

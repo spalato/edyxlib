@@ -233,7 +233,7 @@ Evidence for "copy calls, not implementations":
 ## Code consistency (2026-11-12, from `edyx/io.py`)
 
 - All loaders return `(t, wl, s)` in that order, but the orientation of `s` differs:
-  - wl x t (TA standard): `read_ta_dat`, `unpack_trace`;
+  - wl x t (TA standard): `read_dat`, `unpack_trace`;
   - t x wl: `load_txt`, `load_npz`, `load_asc_series`.
 - So `collect-asc` (`scripts/collect_asc.py`, via `save_txt`) writes t x wl. It is
   the first step of FLUPS acquisition, so "TA layout everywhere" starts there.
@@ -388,7 +388,7 @@ Resolved 2026-11-12:
 - `collect-asc` writes `<date>_<run>.dat` in the TA layout, with a
   `# layout: wl x t` header comment. `.txt` stays the legacy t x wl format, read
   with `load_txt`.
-- All readers (`read_ta_dat`, `load_txt`, `load_npz`, `load_asc_series`) return
+- All readers (`read_dat`, `load_txt`, `load_npz`, `load_asc_series`) return
   `s` as wl x t with ascending t. File layouts are unchanged.
 - `T0Curve` waits for the calibration storage decision. `shift_trace` only needs a
   `t0` array.

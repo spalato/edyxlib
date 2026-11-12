@@ -50,9 +50,9 @@ def pack_trace(t, wl, trace):
     return packed
 
 
-def write_ta_dat(fname, t, wl, s, header="", fmt="%.6e"):
+def write_dat(fname, t, wl, s, header="", fmt="%.6e"):
     """
-    Write a TA `.dat` file: the inverse of `read_ta_dat`.
+    Write a TA `.dat` file: the inverse of `read_dat`.
 
     Masked points are written as NaN. Header lines are written as `#` comments
     (`np.loadtxt` skips them).
@@ -99,7 +99,7 @@ def stack_traces(traces):
 
     Examples
     --------
-    >>> t, wl, stack = stack_traces(read_ta_dat(fn) for fn in sorted(glob("s*.dat")))
+    >>> t, wl, stack = stack_traces(read_dat(fn) for fn in sorted(glob("s*.dat")))
     """
     traces = list(traces)
     if not traces:
@@ -115,7 +115,7 @@ def stack_traces(traces):
         return t, wl, np.ma.stack(ss)
     return t, wl, np.array(ss)
 
-def read_ta_dat(fname, sort_t=True):
+def read_dat(fname, sort_t=True):
     "Read a `.dat` file TA measurement from OMAFEMTO."
     dat = np.loadtxt(fname)
     t = dat[0,1:]
@@ -344,7 +344,7 @@ def save_txt(fname, delays, wl, trace):
     The first element is undefined, the first column contains the delays, the 
     first row contains the wavelengths and the rest contains the signal
     intensity, written as (T, W). `trace` is given in the standard (W, T)
-    orientation. See `write_ta_dat` for the standard writer.
+    orientation. See `write_dat` for the standard writer.
 
     Parameters
     ----------

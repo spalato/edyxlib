@@ -2,7 +2,7 @@ import numpy as np
 from scipy.ndimage import median_filter, generic_filter
 from scipy.signal import medfilt2d
 from edyx.units import nm2cmi
-from edyx.tana import shift_trace  # shared with TA
+from edyx.tana import shift_kin, shift_trace  # shared with TA
 import os
 import toml
 import logging

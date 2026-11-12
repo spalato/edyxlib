@@ -1,7 +1,7 @@
 import numpy as np
 from typer.testing import CliRunner
 
-from edyx.io import read_ta_dat
+from edyx.io import read_dat
 from edyx.scripts.collect_asc import app
 
 
@@ -16,6 +16,6 @@ def test_collect_run(tmp_path):
     assert result.exit_code == 0, result.output
     out = tmp_path / "260910" / "260910_run01.dat"
     assert out.exists()
-    t, w, s = read_ta_dat(out)
+    t, w, s = read_dat(out)
     assert s.shape == (4, 3)
     assert np.allclose(t, [1, 2, 3])
