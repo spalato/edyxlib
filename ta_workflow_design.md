@@ -1,6 +1,7 @@
 # TA and FLUPS workflow redesign: discussion notes
 
-Status: design discussion, nothing implemented yet. Started 2026-10-29.
+Status: first round implemented on branch `feature-processing_reorg` (2026-11-12):
+io layout, `collect-asc`, shared trace functions, `plot_maps`. Started 2026-10-29.
 Updated 2026-11-12 with the notebooks in `edyx/scratch/` (TA, FLUPS, linear), then
 with SP's answers.
 
@@ -236,6 +237,7 @@ Evidence for "copy calls, not implementations":
   - t x wl: `load_txt`, `load_npz`, `load_asc_series`.
 - So `collect-asc` (`scripts/collect_asc.py`, via `save_txt`) writes t x wl. It is
   the first step of FLUPS acquisition, so "TA layout everywhere" starts there.
+  *(Done 2026-11-12: all readers return wl x t; `collect-asc` writes `.dat`.)*
 - Argument order is mixed: `pack_trace(t, wl, s)`, `save_txt(fname, t, wl, s)`,
   `shift_trace(t, z, t0)`, `tana.band_integral(wl, da, bounds)`,
   `spectra_view(wl, t, dat)`. Proposed convention: axes in `(t, wl)` order, then
@@ -393,25 +395,37 @@ Resolved 2026-11-12:
 
 ## Quick fixes, independent of the redesign
 
-- `sorted(glob(...))`.
-- `edyx.io.pack_trace` docstring: says trace is (M, N) with M = len(t), but rows are
-  wavelengths.
-- `edyx.io.load_txt` doesn't sort descending delays; the FLUPS notebooks do it
-  by hand.
-- `edyx.io.load_asc_series`: delay units in the docstring (fs vs ps), and the
-  `step="filename"` branch.
-- Done 2026-11-12: `toml` added to `edyx` dependencies; `import edyx.fana` works
-  (reference file added by SP).
+- `sorted(glob(...))` in the notebook templates (still to do).
+- Done 2026-11-12:
+  - `toml` added to `edyx` dependencies; `import edyx.fana` works (reference file
+    added by SP).
+  - `pack_trace` docstring; `load_txt` sorts descending delays;
+    `load_asc_series` docstring and `step="filename"` branch.
+
+## Usage notes (first round)
+
+- Files store masked points as NaN, and readers return plain arrays. Re-mask with
+  `np.ma.masked_invalid` before averaging or `subtract_pre_t0`; otherwise a single
+  NaN at a negative delay turns a whole wavelength row into NaN.
+- `stack_traces` raises if the axes differ, which also catches stray files in a
+  glob (e.g. `s00_ITOS_ab_*.dat` matched by `s00*.dat`).
 
 ## Candidate next steps
 
-1. Quick fixes above.
-2. Loaders to the TA standard (`s` wl x t, ascending axes). `collect-asc` writes
-   the TA layout. Keep a legacy reader for existing t x wl files.
-3. Axis constants and the argument convention. Then the first pure functions:
-   mask-preserving shift with an edge policy, `crop`, background subtraction,
-   `pcf_correct`, `fluo_wl`, `despike` wrapper.
-4. `edyx/plot`: map grid and signal-kind defaults.
+Done 2026-11-12:
+- Quick fixes above.
+- Loaders to the TA standard; `collect-asc` writes the TA layout; `load_txt` is the
+  legacy reader.
+- Axis constants (`edyx.io`), `shift_trace` (masks kept, `edges="clip"|"nan"`),
+  `crop`, `subtract_pre_t0`, `avg_scans`, `avg_spectra` (`edyx.tana`);
+  `pcf_correct`, `fluo_wl` (`edyx.fana`).
+- `edyx.plot.plot_maps`.
+
+Remaining:
+- Argument-order convention for the older functions (`band_integral`, ...), when
+  they are next touched.
+- Notebook templates (TA, FLUPS) as short sequences of calls.
+
 5. `pyspan`: comparison slicer, then `ScanInspector` (cell 15 + range rejection,
    including wavelength rows), returning a mask.
 6. `T0Curve`: user-chosen model, weighted fit from points, two point sources (clicks,
