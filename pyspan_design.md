@@ -105,6 +105,17 @@ replaces, and the evidence.
   the cell, e.g. `rejections = [(4, None, (221, 222)), ...]` or the t0 points array.
 - **Consequence**: a tool opened with existing decisions shows them and lets the user
   edit them. The data step that uses them works without the widget.
+- **Interim method** (SP, 2026-11-12), until a sidecar file is designed: each tool
+  prints its final decisions as a plain Python literal, ready to paste:
+  ```python
+  rejections = [(4, None, (221, 222)), (None, None, (253, None))]
+  ```
+  - Printed once, on a "Done" button (or when the tool is closed), not on every click.
+  - Each edit is also logged (`logging`, INFO level), so a trail exists in the cell
+    output when the user wants it.
+  - The printed output is saved with the notebook. Pasting it into the next cell makes
+    the notebook re-run without clicking.
+  - A sidecar file can later read and write the same literals.
 
 ### UC6. Opening an old notebook in the new environment
 
