@@ -90,8 +90,11 @@ replaces, and the evidence.
   against the median, set the rejection threshold.
 - **Output**: mask and thresholds; mean spectra per file.
 - **Replaces**: `pyspan.inspect.Linear` (works as intended, no workarounds).
-- **Plan**: keep it working, split the decision logic (RMSD, threshold, mask) from the
-  widget, as agreed.
+- **Evidence** (SP, 2026-11-12): the linear notebook never needs much change; this is
+  the one case where the RMSD threshold works well.
+- **Plan**: port it with as little change as possible, so the notebook keeps working.
+  Low priority. The split into logic and widget (agreed earlier) happens only as far
+  as testing needs it.
 
 ### UC5. Re-running a finished notebook without clicking
 
@@ -127,9 +130,9 @@ replaces, and the evidence.
 
 ## Not use cases (no interactive tool)
 
-- ITOS wavelength calibration: peak finding plus a linear fit, static (`edyx`
-  functions plus a plot). Only change: apply the calibration at load instead of
-  rewriting data files.
+- ITOS wavelength calibration: essentially fully automatic (SP, 2026-11-12): peak
+  finding plus a linear fit, static (`edyx` functions plus a plot). Only change:
+  apply the calibration at load instead of rewriting data files.
 - Despike check: static, `plot_maps` covers it.
 - Scan subsets (direction, early/late): plain code (`runs = [...]`, index masks).
 - Downstream figures (transient spectra, kinetics, band integrals): static matplotlib.
@@ -142,8 +145,9 @@ replaces, and the evidence.
    - (a) points only; the fit is a separate `edyx` call;
    - (b) the user passes a fit function (`fit(wl, t0) -> callable`), and the picker
      shows the curve and the shifted map.
-2. **RMSD threshold view**: keep it for TA and FLUPS stacks, or only for linear
-   spectra (UC4)? The evidence says it is rarely useful for TA and FLUPS.
+2. ~~**RMSD threshold view**: keep it for TA and FLUPS stacks, or only for linear
+   spectra?~~ Answered (2026-11-12): linear spectra only (UC4), where it works. TA and
+   FLUPS rely on manual rejection (UC1).
 3. **Old notebooks**: shims for a transition, or a clean break?
 4. **Rejection literal**: index-based (file, wl index range, t index range), or
    value-based (file, wl range in nm, t range in ps)? Values survive a crop or a
@@ -158,6 +162,6 @@ replaces, and the evidence.
 2. Shared overlay view with a slider (UC2), then selection and rejection on top of it
    (UC1, UC5).
 3. t0 picker (UC3), checked against the 250709 clicked points.
-4. `Linear` port, split into logic and widget (UC4).
+4. `Linear` port with minimal change (UC4).
 5. Shims or README note (UC6).
 6. Example notebooks using the `edyx/examples/data` files.
