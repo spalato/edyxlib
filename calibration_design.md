@@ -162,7 +162,7 @@ interpolated PCF, or keep its `left`/`right`).
   rounding. 250709 is shipped in `edyx/examples/data` and tested.
 - The peak picking matters (scientific, for the users): on 250709, `width=4` alone
   pairs 9 peaks, all correctly (the lab's settings: 6). The two calibrations differ by
-  0.2 nm at 276 nm and 0.3 nm at 680 nm. Equal counts do not guarantee the right pairs
+  0.19 nm at 276 nm and 0.13 nm at 680 nm. Equal counts do not guarantee the right pairs
   in general: the docstring says to check the plot and `fit["points"]`.
 - Docs: `edyx/README.md` (make, apply, missing, check, old files); the TA design doc
   (`T0Curve` dropped).
