@@ -7818,7 +7818,6 @@ Here no shot is rejected, and the t0 curve is the one measured on <code>s20</cod
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -7853,7 +7852,6 @@ Here no shot is rejected, and the t0 curve is the one measured on <code>s20</cod
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="n">data_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"data"</span><span class="p">)</span>  <span class="c1"># copied from 250709, see data/README.md</span>
 <span class="n">fnames</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"s40.dat"</span><span class="p">,</span> <span class="s2">"s44.dat"</span><span class="p">]</span>
-<span class="n">wl_file</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># wavelength calibration (toml); None: measured axis, as the lab's s4044.dat</span>
 <span class="n">t0_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"output/250709_t0_s2027.toml"</span><span class="p">)</span>  <span class="c1"># t0 curve of s20-s27, converted below</span>
 <span class="n">t_pre</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.7</span>  <span class="c1"># ps: delays t &lt; t_pre are before time zero</span>
 
@@ -7907,8 +7905,9 @@ picked on the measured wavelengths, hence <code>axis="wl_raw"</code>. The fit is
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="Read">Read<a class="anchor-link" href="#Read">¶</a></h2><p><code>stack_traces</code> checks that all files share the same delays and wavelengths. Axes of <code>dod</code>: (file, wl, delay).
 NaN become masked points, so they are ignored by the averages.</p>
-<p>The wavelength calibration is applied right after reading, so every later step uses the
-calibrated axis. Here there is none (<code>wl_file = None</code>): the lab's output is on the measured axis.</p>
+<p>Apply the wavelength calibration right after reading, so every later step uses the calibrated
+axis: <code>wl = interp_calibration(read_calibration(wl_file), wl)</code>. Not here: the lab's output is
+on the measured axis.</p>
 </div>
 </div>
 </div>
@@ -7922,10 +7921,6 @@ calibrated axis. Here there is none (<code>wl_file = None</code>): the lab's out
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="n">t</span><span class="p">,</span> <span class="n">wl</span><span class="p">,</span> <span class="n">dod</span> <span class="o">=</span> <span class="n">stack_traces</span><span class="p">(</span><span class="n">read_dat</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">/</span> <span class="n">fn</span><span class="p">)</span> <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">fnames</span><span class="p">)</span>
 <span class="n">dod</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">masked_invalid</span><span class="p">(</span><span class="n">dod</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">wl_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">"no wavelength calibration: wl is the measured axis"</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="n">wl</span> <span class="o">=</span> <span class="n">interp_calibration</span><span class="p">(</span><span class="n">read_calibration</span><span class="p">(</span><span class="n">wl_file</span><span class="p">),</span> <span class="n">wl</span><span class="p">)</span>
 <span class="n">dod</span><span class="o">.</span><span class="n">shape</span>
 </pre></div>
 </div>
@@ -7936,14 +7931,6 @@ calibrated axis. Here there is none (<code>wl_file = None</code>): the lab's out
 <div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>&lt;cell&gt;:4: UserWarning: no wavelength calibration: wl is the measured axis
-  warnings.warn("no wavelength calibration: wl is the measured axis")
-</pre>
-</div>
-</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[4]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
@@ -8051,11 +8038,7 @@ range of the curve raises an error (<code>outside="error"</code>, the default).
 <div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-python"><pre><span></span><span class="k">if</span> <span class="n">t0_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">"no t0 curve: delays not corrected"</span><span class="p">)</span>
-    <span class="n">t0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">wl</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="n">t0</span> <span class="o">=</span> <span class="n">interp_calibration</span><span class="p">(</span><span class="n">read_calibration</span><span class="p">(</span><span class="n">t0_file</span><span class="p">),</span> <span class="n">wl</span><span class="p">)</span>
+<div class="highlight hl-python"><pre><span></span><span class="n">t0</span> <span class="o">=</span> <span class="n">interp_calibration</span><span class="p">(</span><span class="n">read_calibration</span><span class="p">(</span><span class="n">t0_file</span><span class="p">),</span> <span class="n">wl</span><span class="p">)</span>
 
 <span class="n">t_c</span><span class="p">,</span> <span class="n">shifted</span> <span class="o">=</span> <span class="n">shift_trace</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">avg_sub</span><span class="p">,</span> <span class="n">t0</span><span class="p">)</span>
 </pre></div>
@@ -8128,7 +8111,7 @@ range of the curve raises an error (<code>outside="error"</code>, the default).
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="n">out_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">write_dat</span><span class="p">(</span><span class="n">out_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">out_root</span><span class="si">}</span><span class="s2">.dat"</span><span class="p">,</span> <span class="n">t_c</span><span class="p">,</span> <span class="n">wl</span><span class="p">,</span> <span class="n">shifted</span><span class="p">,</span>
-          <span class="n">header</span><span class="o">=</span><span class="sa">f</span><span class="s2">"scans: </span><span class="si">{</span><span class="n">fnames</span><span class="si">}</span><span class="se">\n</span><span class="s2">t_pre: </span><span class="si">{</span><span class="n">t_pre</span><span class="si">}</span><span class="s2"> ps</span><span class="se">\n</span><span class="s2">wl calibration: </span><span class="si">{</span><span class="n">wl_file</span><span class="si">}</span><span class="se">\n</span><span class="s2">t0 curve: </span><span class="si">{</span><span class="n">t0_file</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+          <span class="n">header</span><span class="o">=</span><span class="sa">f</span><span class="s2">"scans: </span><span class="si">{</span><span class="n">fnames</span><span class="si">}</span><span class="se">\n</span><span class="s2">t_pre: </span><span class="si">{</span><span class="n">t_pre</span><span class="si">}</span><span class="s2"> ps</span><span class="se">\n</span><span class="s2">t0 curve: </span><span class="si">{</span><span class="n">t0_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">out_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">out_root</span><span class="si">}</span><span class="s2">_negdelay.dat"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">wl</span><span class="p">,</span> <span class="n">neg_spec</span><span class="o">.</span><span class="n">filled</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)]))</span>
 
 <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plot_maps</span><span class="p">(</span><span class="n">t_c</span><span class="p">,</span> <span class="n">wl</span><span class="p">,</span> <span class="p">[</span><span class="n">shifted</span><span class="p">],</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">15</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>

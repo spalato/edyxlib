@@ -150,9 +150,10 @@ interpolated PCF, or keep its `left`/`right`).
 - `edyx.calib`: `write_calibration`, `read_calibration`, `interp_calibration`, as
   planned. Files start with `kind` and `axis`; tables (`fit`) come last.
 - Examples: `ta_average_t0` and `flups_average_t0_pcf` convert the legacy files to
-  `output/*.toml`, then read them. Each calibration is a parameter; `None` skips the
-  step with `warnings.warn`. The TA example has `wl_file = None` (the lab's output is
-  on the measured axis), and its t0 curve has `axis = "wl_raw"`. The FLUPS PCF is still
+  `output/*.toml`, then apply each in one line. Examples are templates, without
+  checks (SP); the skip-if-`None` pattern is in `edyx/README.md`. The TA example
+  applies no wavelength calibration (the lab's output is on the measured axis), and its
+  t0 curve has `axis = "wl_raw"`. The FLUPS PCF is still
   applied with `pcf_correct(wl_u, s, cal["x"], pcf)` (unchanged this round), after
   replacing its NaN by the maximum (the lab's choice).
 - `tana.itos_calibration(wl, itos, ref=None, **find_peaks_kw)`: returns `x`, `y`,
