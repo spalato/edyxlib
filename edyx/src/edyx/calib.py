@@ -114,4 +114,4 @@ def interp_calibration(cal, x, outside="error"):
     y = np.interp(x, cx, cy)
     if outside == "nan":
         y = np.where(out, np.nan, y)
-    return np.asarray(y)
+    return y

@@ -3,7 +3,6 @@ import os.path as pth
 import numpy as np
 from numpy.polynomial import Polynomial
 from scipy.integrate import simpson
-from scipy.signal import find_peaks
 from edyx.io import FILE_AXIS, TIME_AXIS
 from edyx.utils import between
 
@@ -68,6 +67,8 @@ def itos_calibration(wl, itos, ref=None, **find_peaks_kw):
     ValueError
         If the two spectra have different numbers of peaks.
     """
+    from scipy.signal import find_peaks  # here: scipy.signal is slow to import
+
     wl = np.asarray(wl, dtype=float)
     itos = np.asarray(itos, dtype=float)
     wl_ref, spec_ref = load_itos_spectrum() if ref is None else ref
