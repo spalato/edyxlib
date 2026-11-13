@@ -1,7 +1,9 @@
 # itos: wavelength calibration using ITOS filter.
 import os.path as pth
 import numpy as np
+from numpy.polynomial import Polynomial
 from scipy.integrate import simpson
+from scipy.signal import find_peaks
 from edyx.io import FILE_AXIS, TIME_AXIS
 from edyx.utils import between
 
@@ -30,6 +32,62 @@ def load_itos_spectrum(fname = __REF_FNAME):
     wl, spectrum = np.loadtxt(fname, skiprows=1)[::-1, :].T
     spectrum *= 1000 # to mOD
     return wl, spectrum
+
+
+def itos_calibration(wl, itos, ref=None, **find_peaks_kw):
+    """
+    Wavelength calibration from a measured ITOS spectrum.
+
+    The same peak picking (`scipy.signal.find_peaks` with `find_peaks_kw`) is applied
+    to the measured and the reference spectra, over their common wavelength range.
+    Peaks are paired in order, and the reference wavelengths are fitted linearly
+    against the measured ones.
+
+    Parameters
+    ----------
+    wl : (W,) array
+        Measured wavelength axis, ascending, in nm.
+    itos : (W,) array
+        Measured ITOS absorbance spectrum, in mOD.
+    ref : ((N,) array, (N,) array), optional
+        Reference wavelengths and spectrum (mOD). Default: `load_itos_spectrum()`.
+    **find_peaks_kw
+        Peak picking parameters, e.g. `width=4, prominence=40, height=200`
+        (scientific choice). Equal peak counts do not guarantee the right pairs:
+        check the peaks on a plot of both spectra, and `fit["points"]`.
+
+    Returns
+    -------
+    dict
+        `x`: `wl`; `y`: calibrated wavelengths at `wl`; `fit`: `model`, `coef` (low
+        order first) and `points` (rows: measured, reference peak wavelength).
+        Ready for `write_calibration(path, "wl", "wl_raw", **cal, ...)`.
+
+    Raises
+    ------
+    ValueError
+        If the two spectra have different numbers of peaks.
+    """
+    wl = np.asarray(wl, dtype=float)
+    itos = np.asarray(itos, dtype=float)
+    wl_ref, spec_ref = load_itos_spectrum() if ref is None else ref
+    lo, hi = max(wl.min(), wl_ref.min()), min(wl.max(), wl_ref.max())
+    m, r = between(wl, lo, hi), between(wl_ref, lo, hi)
+    observed = wl[m][find_peaks(itos[m], **find_peaks_kw)[0]]
+    assigned = wl_ref[r][find_peaks(spec_ref[r], **find_peaks_kw)[0]]
+    if observed.size != assigned.size:
+        raise ValueError(
+            f"{observed.size} peaks in the measured spectrum, at {np.round(observed, 1)}, "
+            f"and {assigned.size} in the reference, at {np.round(assigned, 1)}: "
+            "change the peak picking parameters"
+        )
+    pol = Polynomial.fit(observed, assigned, 1).convert()
+    return {
+        "x": wl,
+        "y": pol(wl),
+        "fit": {"model": "linear, low order first", "coef": pol.coef,
+                "points": np.column_stack([observed, assigned])},
+    }
 
 # ══════════════════════════  BAND INTEGRALS  ═══════════════════════════════
 

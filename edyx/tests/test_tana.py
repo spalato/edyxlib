@@ -180,3 +180,32 @@ def test_avg_spectra(data):
     np.testing.assert_allclose(out[2], s[2, 1:].mean())
     np.testing.assert_allclose(out[0], s[0].mean())
     assert avg_spectra(np.stack([s, s])).shape == (2, wl.size)
+
+
+# ITOS wavelength calibration -------------------------------------------------
+
+from pathlib import Path
+
+from edyx.calib import read_calibration, write_calibration
+from edyx.tana import itos_calibration
+
+DATA = Path(__file__).parents[1] / "examples" / "data"
+
+
+def test_itos_calibration_reproduces_250709(tmp_path):
+    """Same result as the lab's ITOS_peak notebook (wl_corr.txt, 4 decimals)."""
+    wl, itos = np.loadtxt(DATA / "s00_ITOS_ab_250709.dat").T
+    wl_raw, wl_cal = np.loadtxt(DATA / "250709_wl_corr.txt").T
+    cal = itos_calibration(wl, itos, width=4, prominence=40, height=200)
+    np.testing.assert_allclose(cal["x"], wl_raw, atol=0.006)
+    np.testing.assert_allclose(cal["y"], wl_cal, atol=0.006)
+    assert cal["fit"]["points"].shape == (6, 2)
+    # ready for write_calibration
+    write_calibration(tmp_path / "wl.toml", "wl", "wl_raw", **cal, source="itos")
+    np.testing.assert_array_equal(read_calibration(tmp_path / "wl.toml")["y"], cal["y"])
+
+
+def test_itos_calibration_peak_count_mismatch():
+    wl, itos = np.loadtxt(DATA / "s00_ITOS_ab_250709.dat").T
+    with pytest.raises(ValueError, match="peaks in the measured spectrum"):
+        itos_calibration(wl, itos, width=4, prominence=40)  # 6 vs 7 peaks

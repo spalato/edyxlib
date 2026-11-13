@@ -28,6 +28,18 @@ upconverted). `kind`, `axis` and the other entries are free text, not checked. T
 table is for information only (to recompute the curve on another grid); it is never used
 to evaluate.
 
+TA wavelength calibration, from the ITOS spectrum of the day (same peak picking on the
+measured and reference spectra, paired in order, linear fit; different peak counts raise):
+
+```python
+from edyx.tana import itos_calibration
+
+wl_raw, itos = np.loadtxt("s00_ITOS_ab_250709.dat").T
+cal = itos_calibration(wl_raw, itos, width=4, prominence=40, height=200)  # peak picking: a choice
+write_calibration("250709_wl_itos.toml", "wl", "wl_raw", **cal, units=["nm", "nm"],
+                  date=datetime.date(2025, 7, 9), source="itos", made_by="ITOS_peak.ipynb")
+```
+
 Apply, by value:
 
 ```python
