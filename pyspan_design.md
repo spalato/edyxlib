@@ -230,6 +230,8 @@ Each step ends with tests passing and a commit. Executors write code; I review.
    "Done". The linear notebook stays unchanged.
 7. **Examples**: TA rejection and t0 review on the `edyx/examples/data` files (s40,
    s44, stored t0 points), and the comparison viewer on the FLUPS example.
+   *(2026-11-13: the TA example is replaced by two templates, `ta_1_linear_itos` and
+   `ta_2_processing`, with the calibration files of `edyx.calib`.)*
 8. **Docs**: README (install into `edyxenv`, `%matplotlib widget`), and the TA
    design doc updated.
 
