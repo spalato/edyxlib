@@ -240,8 +240,11 @@ Evidence for "copy calls, not implementations":
   *(Done 2026-11-12: all readers return wl x t; `collect-asc` writes `.dat`.)*
 - Argument order is mixed: `pack_trace(t, wl, s)`, `save_txt(fname, t, wl, s)`,
   `shift_trace(t, z, t0)`, `tana.band_integral(wl, da, bounds)`,
-  `spectra_view(wl, t, dat)`. Proposed convention: axes in `(t, wl)` order, then
-  data, then options. File name first for writers.
+  `spectra_view(wl, t, dat)`. Convention (settled 2026-11-13): the axes the
+  function uses, in `(t, wl)` order, then data, then options. File name first for
+  writers. Only the axes needed: `band_integral(wl, da, bounds)` conforms. All of
+  `edyx/src` conforms; only `edyx/scratch` (`spectra_view`, `transients_view`) does
+  not.
 - `load_asc_series`: the docstring says delays are in fs (the notebooks use ps), and
   `step="filename"` indexes `fnames[0]` after `fnames = iter(fnames)`, which fails.
 
@@ -324,8 +327,10 @@ Added 2026-11-12:
 
 ## Still proposed
 
-- t0 points from either source (clicks, or dye fits with errors) go through the
-  same weighted fit, with a model the user chooses and the fit statistics shown.
+- ~~t0 points from either source (clicks, or dye fits with errors) go through the
+  same weighted fit, with a model the user chooses and the fit statistics shown.~~
+  Superseded 2026-11-13: the fit stays in the notebook (`T0Curve` dropped, see
+  `calibration_design.md`).
 
 ## Deferred: scientific choices, on the users
 
@@ -429,8 +434,6 @@ Done 2026-11-12:
 - `edyx.plot.plot_maps`.
 
 Remaining:
-- Argument-order convention for the older functions (`band_integral`, ...), when
-  they are next touched.
 - Notebook templates (TA, FLUPS) as short sequences of calls.
 
 5. `pyspan`: comparison slicer, then `ScanInspector` (cell 15 + range rejection,
