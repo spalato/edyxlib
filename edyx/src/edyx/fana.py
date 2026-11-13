@@ -4,7 +4,7 @@ from scipy.signal import medfilt2d
 from edyx.units import nm2cmi
 from edyx.tana import shift_kin, shift_trace  # shared with TA
 import os
-import toml
+import tomllib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -95,8 +95,8 @@ def lognorm(x, amp, x0, delta, gamma):
 # load lognormal parameters
 default_ref_spectra = {}
 #try:
-with open(os.path.join(__dirpath, "refspec_Gerecke_RSI_2016.toml")) as f:
-    default_ref_spectra.update(toml.load(f))
+with open(os.path.join(__dirpath, "refspec_Gerecke_RSI_2016.toml"), "rb") as f:
+    default_ref_spectra.update(tomllib.load(f))
 #except Exception:
 #    logger.warning("Loading reference fluorescence spectra failed.")
 

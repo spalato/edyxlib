@@ -1,8 +1,12 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 from scipy.special import erf
+from edyx.calib import interp_calibration, write_calibration
+from edyx.io import read_dat
 from edyx.tana import (load_itos_spectrum, shift_kin, shift_trace, crop,
-                       subtract_pre_t0, avg_scans, avg_spectra)
+                       subtract_pre_t0, avg_scans, avg_spectra, itos_calibration)
 
 
 def test_load_itos_spectrum_finds_file():
@@ -180,3 +184,42 @@ def test_avg_spectra(data):
     np.testing.assert_allclose(out[2], s[2, 1:].mean())
     np.testing.assert_allclose(out[0], s[0].mean())
     assert avg_spectra(np.stack([s, s])).shape == (2, wl.size)
+
+
+# ITOS wavelength calibration -------------------------------------------------
+
+DATA = Path(__file__).parents[1] / "examples" / "data"
+PEAKS = dict(width=4, prominence=40, height=200)  # the lab's choice on 250709
+
+
+def load_itos():
+    return np.loadtxt(DATA / "s00_ITOS_ab_250709.dat").T
+
+
+def test_itos_calibration_reproduces_250709(tmp_path):
+    """Same result as the lab's ITOS_peak notebook (wl_corr.txt, 4 decimals)."""
+    wl_raw, wl_cal = np.loadtxt(DATA / "250709_wl_corr.txt").T
+    cal = itos_calibration(*load_itos(), **PEAKS)
+    np.testing.assert_allclose(cal["x"], wl_raw, atol=0.006)
+    np.testing.assert_allclose(cal["y"], wl_cal, atol=0.006)
+    assert cal["fit"]["points"].shape == (6, 2)
+    write_calibration(tmp_path / "wl.toml", "wl", "wl_raw", **cal)  # ready for it
+
+
+def test_itos_calibration_peak_count_mismatch():
+    with pytest.raises(ValueError, match="peaks in the measured spectrum"):
+        itos_calibration(*load_itos(), width=4, prominence=40)  # 6 vs 7 peaks
+
+
+def test_itos_calibration_needs_two_peaks():
+    with pytest.raises(ValueError, match="at least 2"):
+        itos_calibration(*load_itos(), width=4, distance=1000)  # 1 peak each
+
+
+def test_itos_calibration_applies_to_a_scan():
+    """Make, then apply: the scan's measured axis is within range (outside='error')."""
+    cal = itos_calibration(*load_itos(), **PEAKS)
+    _, wl, _ = read_dat(DATA / "s40.dat")
+    wl_cal = interp_calibration(cal, wl)
+    assert wl_cal.shape == wl.shape and np.all(np.diff(wl_cal) > 0)
+    assert 2.0 < wl_cal[0] - wl[0] < 2.5  # 2.3 nm at 276 nm

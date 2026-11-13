@@ -258,5 +258,6 @@ Differences from the plan, from review and user testing:
 ### Not in this round
 
 - Sidecar files (decisions are printed literals for now).
-- Assisted t0 picking, t0 fits (`T0Curve`).
+- Assisted t0 picking. (t0 fits: in the notebook, no `T0Curve`; see
+  `calibration_design.md`.)
 - Outlier tests for 1 or 2 files.

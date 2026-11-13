@@ -23,8 +23,8 @@ dependencies = [
     # TODO: add packages that are part of our "standard distribution""
     "scistyles",
     "colorcet",
-    "toml>=0.10.2",
     "jupyterlab>=4.6.6",
+    "tomli-w>=1.2.0",
 ]
 
 [project.scripts] # command line tools.
