@@ -1,7 +1,7 @@
 # Calibration files: use cases and decisions
 
-Decided 2026-11-13 (SP's answers folded in; the commit before this one has them
-inline). Plan at the end.
+Decided 2026-11-13 (SP's answers folded in; commit `d8d962a` has them inline).
+Plan at the end: implemented 2026-11-13.
 
 ## Scope
 
@@ -117,7 +117,8 @@ points = [[321.22, -0.33], ...]
 
 ## Plan
 
-Each step ends with tests passing and a commit.
+Each step ends with tests passing and a commit. All four done 2026-11-13 (see
+"Implemented" below).
 
 1. **`edyx.calib`**, plain functions on dicts:
    - `write_calibration(path, kind, axis, x, y, **meta)`: numpy values in `meta` are
@@ -143,3 +144,25 @@ Each step ends with tests passing and a commit.
 
 Not in this round: the sidecar (decision 9), changes to `pcf_correct` (pass it the
 interpolated PCF, or keep its `left`/`right`).
+
+## Implemented (2026-11-13)
+
+- `edyx.calib`: `write_calibration`, `read_calibration`, `interp_calibration`, as
+  planned. Files start with `kind` and `axis`; tables (`fit`) come last.
+- Examples: `ta_average_t0` and `flups_average_t0_pcf` convert the legacy files to
+  `output/*.toml`, then read them. Each calibration is a parameter; `None` skips the
+  step with `warnings.warn`. The TA example has `wl_file = None` (the lab's output is
+  on the measured axis), and its t0 curve has `axis = "wl_raw"`. The FLUPS PCF is still
+  applied with `pcf_correct(wl_u, s, cal["x"], pcf)` (unchanged this round), after
+  replacing its NaN by the maximum (the lab's choice).
+- `tana.itos_calibration(wl, itos, ref=None, **find_peaks_kw)`: returns `x`, `y`,
+  `fit`, so `write_calibration(path, "wl", "wl_raw", **cal, ...)`. Reproduces
+  `wl_corr.txt` of 250521 (`width=4, height=100`), 250528 (`width=4, prominence=80`)
+  and 250709 (`width=4, prominence=40, height=200`) within 0.005 nm, the file's
+  rounding. 250709 is shipped in `edyx/examples/data` and tested.
+- The peak picking matters (scientific, for the users): on 250709, `width=4` alone
+  pairs 9 peaks, all correctly (the lab's settings: 6). The two calibrations differ by
+  0.2 nm at 276 nm and 0.3 nm at 680 nm. Equal counts do not guarantee the right pairs
+  in general: the docstring says to check the plot and `fit["points"]`.
+- Docs: `edyx/README.md` (make, apply, missing, check, old files); the TA design doc
+  (`T0Curve` dropped).

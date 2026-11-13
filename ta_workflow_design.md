@@ -290,11 +290,15 @@ Added 2026-11-12:
   positions, and log them in provenance.
 - **Calibration objects** share one pattern: made from a reference measurement,
   saved with their source and the axis they were made on, evaluated on the current
-  grid, referenced by file name in provenance.
-  - `T0Curve`: a model the user chooses (polynomial in eV, `a + b/wl**2 + c/wl**4`,
-    ...) with its parameters stored by name.
-  - PCF: a sampled curve, with interpolation and an out-of-range policy.
-  - Wavelength calibration: ITOS only.
+  grid, referenced by file name in provenance. Settled 2026-11-13 in
+  [calibration_design.md](calibration_design.md): one toml file per calibration
+  holding a sampled curve, applied by value (`edyx.calib`).
+  - t0 curve: the fit (a model the user chooses: polynomial in eV,
+    `a + b/wl**2 + c/wl**4`, ...) stays in the notebook, which writes the sampled
+    curve; model and coefficients are kept in the file for information. No `T0Curve`
+    class.
+  - PCF: a sampled curve, with an out-of-range policy.
+  - Wavelength calibration: ITOS only (`tana.itos_calibration`).
   - IRF width, if it is reused.
 - **New functions**, each with its benefit:
   - `crop(t, wl, s, t_lim=None, wl_lim=None)`: replaces `cut_wl` and the
@@ -376,9 +380,6 @@ Small tools, one job each, connected by a common self-describing format.
 
 ## Open questions
 
-- Calibration storage: consolidate calibrations into an early sidecar file
-  (text-based, `toml` preferred)? Also the coefficient and parameter convention, and
-  how a notebook refers to a calibration made on another day. Needs more discussion.
 - `TAStack` as the name, now that FLUPS uses the same stack?
 
 Resolved 2026-11-12:
@@ -392,6 +393,12 @@ Resolved 2026-11-12:
   `s` as wl x t with ascending t. File layouts are unchanged.
 - `T0Curve` waits for the calibration storage decision. `shift_trace` only needs a
   `t0` array.
+
+Resolved 2026-11-13 ([calibration_design.md](calibration_design.md)):
+- Calibration storage: one toml file per calibration (sampled curve, axis, source,
+  fit for information), applied by value with an explicit out-of-range policy. Files
+  from another day are copied or named by path. The sidecar is postponed. `T0Curve`
+  is dropped.
 
 ## Quick fixes, independent of the redesign
 
@@ -429,8 +436,9 @@ Remaining:
 5. `pyspan`: comparison slicer, then `ScanInspector` (cell 15 + range rejection,
    including wavelength rows), returning a mask. Done 2026-11-12 (`Overlay`,
    `ScanInspector`, `T0Picker`; see `pyspan_design.md`).
-6. `T0Curve`: user-chosen model, weighted fit from points, two point sources (clicks,
-   dye fits), save/load once the storage question is settled.
+6. ~~`T0Curve`~~: dropped (2026-11-13). The fit stays in the notebook, which writes
+   the sampled curve with `write_calibration`.
 7. Regression test: reproduce the 250709 `.dat` outputs (run in env `main`). Add
    one FLUPS dataset once its inputs are located.
-8. Extend the calibration pattern to the PCF and the ITOS calibration.
+8. Extend the calibration pattern to the PCF and the ITOS calibration. Done
+   2026-11-13 (`edyx.calib`, `tana.itos_calibration`).
