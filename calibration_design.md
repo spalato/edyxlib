@@ -135,7 +135,8 @@ Each step ends with tests passing and a commit.
 3. **ITOS, automated**: `tana.itos_calibration(wl, itos, ...)`: the same peak picking on
    the measured and reference spectra, pairing, linear fit. It returns what
    `write_calibration` needs, with the fit for information. The peak parameters are
-   explicit (scientific). Acceptance: reproduces `wl_corr.txt` of 250521, 250528 and
+   explicit (scientific). Peaks are paired in order; a different number of measured
+   and reference peaks is an error (SP, 2026-11-13). Acceptance: reproduces `wl_corr.txt` of 250521, 250528 and
    250709.
 4. **Docs**: README (making and applying calibrations, missing ones), and the TA
    design doc (`T0Curve` dropped: the fit stays in the notebook, which writes the file).
