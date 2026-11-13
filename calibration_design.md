@@ -161,7 +161,7 @@ interpolated PCF, or keep its `left`/`right`).
   and 250709 (`width=4, prominence=40, height=200`) within 0.005 nm, the file's
   rounding. 250709 is shipped in `edyx/examples/data` and tested.
 - The peak picking matters (scientific, for the users): on 250709, `width=4` alone
-  pairs 9 peaks, all correctly (the lab's settings: 6). The two calibrations differ by
+  pairs 9 peaks, which look consistent (the lab's settings: 6; the users' call). The two calibrations differ by
   0.19 nm at 276 nm and 0.13 nm at 680 nm. Equal counts do not guarantee the right pairs
   in general: the docstring says to check the plot and `fit["points"]`.
 - Docs: `edyx/README.md` (make, apply, missing, check, old files); the TA design doc

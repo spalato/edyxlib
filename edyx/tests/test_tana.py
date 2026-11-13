@@ -209,3 +209,16 @@ def test_itos_calibration_peak_count_mismatch():
     wl, itos = np.loadtxt(DATA / "s00_ITOS_ab_250709.dat").T
     with pytest.raises(ValueError, match="peaks in the measured spectrum"):
         itos_calibration(wl, itos, width=4, prominence=40)  # 6 vs 7 peaks
+
+
+def test_itos_calibration_applies_to_a_scan():
+    """Make, then apply: the scan's measured axis is within range (outside='error')."""
+    from edyx.calib import interp_calibration
+    from edyx.io import read_dat
+
+    cal = itos_calibration(*np.loadtxt(DATA / "s00_ITOS_ab_250709.dat").T,
+                           width=4, prominence=40, height=200)
+    _, wl, _ = read_dat(DATA / "s40.dat")
+    wl_cal = interp_calibration(cal, wl)
+    assert wl_cal.shape == wl.shape and np.all(np.diff(wl_cal) > 0)
+    assert 2.0 < wl_cal[0] - wl[0] < 2.5  # 2.3 nm at 276 nm

@@ -8153,7 +8153,7 @@ with the numerical derivative, as in the lab's notebook.</p>
     <span class="n">sig_u</span> <span class="o">=</span> <span class="n">shifted</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="n">pcf_cal</span> <span class="o">=</span> <span class="n">read_calibration</span><span class="p">(</span><span class="n">pcf_file</span><span class="p">)</span>
-    <span class="n">pcf</span> <span class="o">=</span> <span class="n">pcf_cal</span><span class="p">[</span><span class="s2">"y"</span><span class="p">]</span>
+    <span class="n">pcf</span> <span class="o">=</span> <span class="n">pcf_cal</span><span class="p">[</span><span class="s2">"y"</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">pcf</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">pcf</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">pcf</span><span class="p">)</span>
     <span class="n">sig_u</span> <span class="o">=</span> <span class="n">pcf_correct</span><span class="p">(</span><span class="n">wl_u</span><span class="p">,</span> <span class="n">shifted</span><span class="p">,</span> <span class="n">pcf_cal</span><span class="p">[</span><span class="s2">"x"</span><span class="p">],</span> <span class="n">pcf</span><span class="p">)</span>
 
