@@ -1,0 +1,42 @@
+[project]
+name = "pyspan"
+version = "0.3.2"
+description = "Interactive (ipywidgets) tools for processing edyx data"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Samuel Palato", email = "7659022+spalato@users.noreply.github.com" },
+]
+license = "MIT"
+license-files = ["LICENSE.txt"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+    "edyx>=0.2",
+    "ipywidgets>=8",
+    "ipympl",
+    "matplotlib",
+    "numpy",
+    "attrs",
+]
+
+[project.urls]
+Repository = "https://github.com/spalato/edyxlib"
+
+[tool.uv.sources]
+edyx = { path = "../edyx", editable = true }
+
+[build-system]
+requires = ["uv_build>=0.12,<0.14"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "scipy>=1.17.1",
+]

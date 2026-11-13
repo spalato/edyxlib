@@ -88,6 +88,17 @@ Packages are distributed as wheels attached to
 [GitHub Releases](https://github.com/spalato/edyxlib/releases). Each release is
 tagged `<package>-v<version>`. A package index with a fixed address always
 lists the released versions. Install or upgrade to the latest with:
+```
+uv pip install --python ~\.venvs\edyxenv --upgrade `
+  --index https://spalato.github.io/edyxlib/simple/ <package>
+```
+
+Release using a helper script:
+```shell
+PS > .\scripts\release.ps1 <package> <new_version>
+```
+Example: `PS > .\scripts\release.ps1 edyx 0.2.2`. Version must be higher than current.
 
 Dependencies between our packages (e.g. `pyspan` needs `edyx`) are resolved
 automatically. To install a specific version, use `edyx==0.1.0`.
+
