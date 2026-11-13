@@ -44,6 +44,20 @@ def test_numpy_scalars_in_meta(tmp_path):
     assert cal["slope"] == 1.5 and cal["n"] == 3
 
 
+def test_non_ascii_and_backslashes(tmp_path):
+    path = tmp_path / "c.toml"
+    write_calibration(path, "t0", "wl", [1, 2], [3, 4], units=["\u00b5m", "\u00b0C"],
+                      made_by=r"D:\exp\xanthene\nb.ipynb")
+    cal = read_calibration(path)
+    assert cal["units"] == ["\u00b5m", "\u00b0C"]
+    assert cal["made_by"] == r"D:\exp\xanthene\nb.ipynb"
+
+
+def test_none_is_refused(tmp_path):
+    with pytest.raises(TypeError):
+        write_calibration(tmp_path / "c.toml", "t0", "wl", [1, 2], [3, 4], notes=None)
+
+
 def test_bad_shapes(tmp_path):
     with pytest.raises(ValueError):
         write_calibration(tmp_path / "c.toml", "t0", "wl", [1, 2, 3], [1, 2])

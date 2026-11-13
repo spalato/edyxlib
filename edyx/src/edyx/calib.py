@@ -15,7 +15,7 @@ import tomllib
 from pathlib import Path
 
 import numpy as np
-import toml
+import tomli_w
 
 OUTSIDE = ("error", "constant", "nan")
 
@@ -52,13 +52,14 @@ def write_calibration(path, kind, axis, x, y, **meta):
         Other entries: `units`, `date`, `source`, `made_by`, `notes`, ... A dict
         becomes a table, e.g. `fit={"model": ..., "coef": ..., "points": ...}`
         (for information only). Numpy values are converted to standard types.
+        toml has no null: `None` raises a TypeError (leave the entry out).
     """
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)
     if x.ndim != 1 or x.shape != y.shape:
         raise ValueError(f"x and y must be 1D of the same length, got {x.shape} and {y.shape}")
     cal = {"kind": kind, "axis": axis, **meta, "x": x, "y": y}
-    Path(path).write_text(toml.dumps(_plain(cal)))
+    Path(path).write_text(tomli_w.dumps(_plain(cal)), encoding="utf-8")
 
 
 def read_calibration(path):

@@ -211,6 +211,11 @@ def test_itos_calibration_peak_count_mismatch():
         itos_calibration(*load_itos(), width=4, prominence=40)  # 6 vs 7 peaks
 
 
+def test_itos_calibration_needs_two_peaks():
+    with pytest.raises(ValueError, match="at least 2"):
+        itos_calibration(*load_itos(), width=4, distance=1000)  # 1 peak each
+
+
 def test_itos_calibration_applies_to_a_scan():
     """Make, then apply: the scan's measured axis is within range (outside='error')."""
     cal = itos_calibration(*load_itos(), **PEAKS)

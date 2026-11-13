@@ -52,8 +52,11 @@ def itos_calibration(wl, itos, ref=None, **find_peaks_kw):
         Reference wavelengths and spectrum (mOD). Default: `load_itos_spectrum()`.
     **find_peaks_kw
         Peak picking parameters, e.g. `width=4, prominence=40, height=200`
-        (scientific choice). Equal peak counts do not guarantee the right pairs:
-        check the peaks on a plot of both spectra, and `fit["points"]`.
+        (scientific choice). Distances and widths are in samples, not nm: the
+        reference (1 nm steps) and the measured axis (about 0.8 nm) differ, so the
+        same values select slightly differently in nm. Equal peak counts do not
+        guarantee the right pairs: check the peaks on a plot of both spectra, and
+        `fit["points"]`.
 
     Returns
     -------
@@ -65,7 +68,7 @@ def itos_calibration(wl, itos, ref=None, **find_peaks_kw):
     Raises
     ------
     ValueError
-        If the two spectra have different numbers of peaks.
+        If the two spectra have different numbers of peaks, or fewer than 2.
     """
     from scipy.signal import find_peaks  # here: scipy.signal is slow to import
 
@@ -80,6 +83,11 @@ def itos_calibration(wl, itos, ref=None, **find_peaks_kw):
         raise ValueError(
             f"{observed.size} peaks in the measured spectrum, at {np.round(observed, 1)}, "
             f"and {assigned.size} in the reference, at {np.round(assigned, 1)}: "
+            "change the peak picking parameters"
+        )
+    if observed.size < 2:
+        raise ValueError(
+            f"{observed.size} peak(s) found, a linear fit needs at least 2: "
             "change the peak picking parameters"
         )
     pol = Polynomial.fit(observed, assigned, 1).convert()
