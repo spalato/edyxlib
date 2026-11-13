@@ -4,6 +4,7 @@ matplotlib.use("module://ipympl.backend_nbagg")
 
 import logging
 import types
+from pathlib import Path
 
 import edyx.io
 import ipywidgets as widgets
@@ -18,7 +19,7 @@ from pyspan import T0Picker
 t = np.linspace(-1, 3, 50)
 wl = np.linspace(400, 700, 31)
 s = np.random.default_rng(0).normal(size=(wl.size, t.size))
-DATA = r"C:\work\src\edyxlib\edyx\examples\data"
+DATA = Path(__file__).parents[2] / "edyx" / "examples" / "data"  # monorepo checkout
 
 
 @pytest.fixture(autouse=True)
@@ -104,8 +105,8 @@ def test_plot_state():
 
 
 def test_acceptance_uc3(capsys):
-    d = np.load(rf"{DATA}\s2027_t0corr.npz")
-    tt, ww, ss = edyx.io.read_dat(rf"{DATA}\s40.dat")
+    d = np.load(DATA / "s2027_t0corr.npz")
+    tt, ww, ss = edyx.io.read_dat(DATA / "s40.dat")
     p = T0Picker(tt, ww, ss, points=d["t0_meas"])
     p.done()
     ns = {"np": np}
