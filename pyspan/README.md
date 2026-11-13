@@ -89,7 +89,7 @@ import logging; logging.basicConfig(level=logging.INFO)
 `examples/` holds notebooks on the `edyx` example data (`../edyx/examples/data`). They are
 templates to start from: copy one into the day folder and set `data_dir = Path(".")`.
 
-- TA (250709), run in this order:
+- TA (250709), in `examples/TA/`, run in this order:
   1. `ta_1_linear_itos`: linear spectra (`Linear`), ITOS wavelength calibration, spectra
      saved on the calibrated axis.
   2. `ta_2_processing`: scans on the calibrated axis, comparison (`Overlay`), rejection

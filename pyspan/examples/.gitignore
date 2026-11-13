@@ -1,1 +1,4 @@
 output/
+*.toml
+*.dat
+*.png
