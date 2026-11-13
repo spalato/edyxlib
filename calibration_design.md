@@ -149,6 +149,12 @@ interpolated PCF, or keep its `left`/`right`).
 
 - `edyx.calib`: `write_calibration`, `read_calibration`, `interp_calibration`, as
   planned. Files start with `kind` and `axis`; tables (`fit`) come last.
+- toml: written with `tomli_w` (UTF-8), read with the standard `tomllib`. The old
+  `toml` package is gone: it wrote invalid files for strings with `\x` (Windows
+  paths). `fana` reads its reference spectra with `tomllib`. One array value per
+  line: a 1600-point curve is about 65 kB. `None` in metadata raises (toml has no
+  null).
+- `itos_calibration` raises with fewer than 2 peaks, as with different counts.
 - Examples: `ta_average_t0` and `flups_average_t0_pcf` convert the legacy files to
   `output/*.toml`, then apply each in one line. Examples are templates, without
   checks (SP); the skip-if-`None` pattern is in `edyx/README.md`. The TA example
