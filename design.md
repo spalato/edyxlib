@@ -188,12 +188,56 @@ an ordinary `edyx` call or plain numpy.
   doesn't run them. Either a pytest that runs the same steps, or executing the
   notebooks.
 
+## Provenance and sidecars (discussed 2026-11-14, not implemented)
+
+Settled:
+- **No merged calibration file.** Calibrations stay one file each.
+- **Decisions stay in the notebook.** No decisions sidecar that the tools read or
+  write: it would be a second source of truth, and hidden state.
+- **The output header names calibration files**, never their contents, so it stays
+  readable. For example, the t0 points stay in the t0 file.
+
+Plan, in this order:
+1. **`provenance(**items)` in `edyx.io`**, plus a counterpart that reads it back.
+   - One `key = literal` line per item, in the format "Done" prints (`format_literal`);
+     file paths become names.
+   - Read back with `ast.literal_eval`, which runs no code.
+   - The user passes what they used in one call:
+     `provenance(scans=names, wl_calibration=wl_file, rejections=rejections, t_pre=t_pre, t0_calibration=t0_file)`.
+   - The TA templates use it in their save cell.
+2. **A light wrapper for TA, only if the templates show the same decisions passed
+   around repeatedly.** It holds raw data and decisions only, and its methods mirror
+   the functions (`np.mean(a)` / `a.mean()`). Its rules:
+   - **State:** raw `t`, `wl_raw`, stack and file names, plus the decisions as plain
+     attributes (`wl_calibration`, `rejections`, `threshold`, `t_pre`,
+     `t0_calibration`). The user sets them explicitly, from pasted literals.
+   - **No derived data stored, no cache.** `wl`, `data` and the method results are
+     recomputed on each call.
+   - **Thin methods.** Each method is a one-line call to an existing `edyx` function,
+     which stays the primary API (tests, docs).
+   - **No mutation.** Methods never change the object.
+   - **Calibrations by file name**, read when used.
+   - **`header()`** uses `provenance()`, and `decisions` is a plain dict. That keeps a
+     record file per output and papermill parameters possible later.
+   - **Escape hatch.** Results are plain arrays: workarounds continue in plain numpy,
+     outside the object. The header doesn't record them; the notebook is the full
+     record.
+   - **pyspan is unchanged.** The tools keep taking arrays.
+   - **Containment.** Values that change the saved numbers are attributes; display
+     options are arguments. One class per technique, each with a short fixed list of
+     decisions, never a generic class with an open dict: otherwise this becomes the
+     declarative recipe already rejected.
+3. **FLUPS waits** for its templates. Their decisions (despiking parameters,
+   `pcf_file`, `t0_offset`, gate) will show whether one shape fits both techniques.
+
+Kept open:
+- a record file per output, written once at save (inputs, calibration names,
+  decisions). It is a record, not a driver: plain-numpy workarounds aren't in it.
+- papermill parameters: tag the decisions cells, to reprocess in batch.
+
 ## Open points
 
-- **Stateful wrapper** (`TAStack`?) over the functions, and splitting `Linear` into
-  model and view: only if a need appears.
-- **Calibration sidecar.** Several calibrations under named tables of one file. Each
-  calibration is already a flat dict, so this stays possible.
+- **Splitting `Linear`** into model and view: only if testing needs it.
 - **Repair as a decision kind** (despiking: parameters and replaced positions,
   `out != data`), logged in the output header. Not implemented.
 - **Shift edge cases.** A sub-step shift by linear interpolation smears the rise with
