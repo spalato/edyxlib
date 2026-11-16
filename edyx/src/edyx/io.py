@@ -116,7 +116,12 @@ def stack_traces(traces):
     return t, wl, np.array(ss)
 
 def read_dat(fname, sort_t=True):
-    "Read a `.dat` file TA measurement from OMAFEMTO."
+    """
+    Read a `.dat` file in the TA layout (wl x t, as written by `write_dat`).
+
+    NaN are masked: the inverse of `write_dat`, which writes masked points as NaN.
+    The data is always a masked array.
+    """
     dat = np.loadtxt(fname)
     t = dat[0,1:]
     wl = dat[1:,0]
@@ -126,7 +131,7 @@ def read_dat(fname, sort_t=True):
         srt_idx = np.argsort(t)
         t = t[srt_idx]
         z = z[:,srt_idx]
-    return t, wl, z
+    return t, wl, np.ma.masked_invalid(z)
 
 
 def read_ab_dat(fname):

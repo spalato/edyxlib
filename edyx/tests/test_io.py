@@ -35,9 +35,9 @@ def test_dat_masked_and_header(tmp_path):
     m[1, 2] = np.ma.masked
     write_dat(fn, T, WL, m, header="some header\nsecond line")
     t, wl, s = read_dat(fn)
-    assert np.isnan(s[1, 2])
-    s[1, 2] = S[1, 2]
-    assert np.allclose(s, S)
+    assert np.ma.isMaskedArray(s)
+    assert s.mask[1, 2] and s.mask.sum() == 1
+    assert np.allclose(s.compressed(), np.delete(S.ravel(), 1 * 4 + 2))
 
 
 def legacy_file(fn):

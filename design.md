@@ -61,7 +61,7 @@ Their full discussion (findings, alternatives, dates) is in git history, up to c
   - `collect-asc` writes `<date>_<run>.dat`.
   - All readers return wl x t with ascending `t`.
 - **Masks.** Masked arrays during processing, NaN on save. Functions keep masks;
-  dropping one silently is a bug. After reading, re-mask with `np.ma.masked_invalid`.
+  dropping one silently is a bug. `read_dat` masks NaN, the inverse of `write_dat`.
 - **File order.** `sorted(glob(...))`, so file indices in decision literals keep their
   meaning.
 - **Outputs.** Names start with the date (`250709_s4044.dat`), and files go next to
