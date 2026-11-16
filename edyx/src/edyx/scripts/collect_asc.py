@@ -28,35 +28,45 @@ def rel(path: Path) -> str:
         return f"'{path}'"
 
 
+def is_run(p: Path, pattern: str) -> bool:
+    """A run folder: a directory named `run*` (any case) containing files matching `pattern`."""
+    return p.is_dir() and p.name.lower().startswith("run") and any(p.glob(pattern))
+
+
 def find_runs(path: Path, pattern: str) -> list[Path]:
     """Return the run folders under `path`, sorted.
 
-    A run folder is a directory named `run*` containing files matching `pattern`.
-    If `path` is itself a run folder, it is returned as is. Otherwise, `path` is searched
-    recursively (eg: a dated folder, `PCF` or `PCF/<dye>`).
+    A run folder is a directory whose name starts with `run` (any case) containing files
+    matching `pattern`. If `path` is itself a run folder, it is returned as is. Otherwise,
+    `path` is searched recursively (eg: a dated folder, `PCF` or `PCF/<dye>`), without
+    descending into run folders.
     """
-
-    def is_run(p: Path) -> bool:
-        return p.is_dir() and p.name.startswith("run") and any(p.glob(pattern))
-
-    if is_run(path.resolve()):
+    if is_run(path.resolve(), pattern):
         return [path]
-    return sorted(p for p in path.rglob("run*") if is_run(p))
+    found = []
+    for root, dirs, _ in os.walk(path):
+        runs = [d for d in dirs if is_run(Path(root) / d, pattern)]
+        found.extend(Path(root) / d for d in runs)
+        dirs[:] = [d for d in dirs if d not in runs]
+    return sorted(found)
 
 
 def output_path(run: Path, outdir: Optional[Path]) -> Path:
-    """Output file of a (resolved) run folder: `<date>_<parts below the date>.dat`.
+    """Output file of a (resolved) run folder: `<dated folder>_<parts below it>.dat`.
 
-    The date is the name of the nearest ancestor of `run` made of 6 digits. For
-    `260605/PCF/PBBO/run01`, the name is `260605_PCF_PBBO_run01.dat`.
+    The dated folder is the nearest ancestor of `run` whose name starts with 6 digits,
+    used as is. For `260605/PCF/PBBO/run01`, the name is `260605_PCF_PBBO_run01.dat`.
+    Without a dated folder, the name is `<parent folder>_<run folder>.dat`, with a warning.
     The file goes next to the run folder, or in `outdir`.
     """
-    dated = next((p for p in run.parents if re.fullmatch(r"\d{6}", p.name)), None)
+    dated = next((p for p in run.parents if re.match(r"\d{6}", p.name)), None)
     if dated is None:
-        raise ValueError(
-            "no dated folder (6 digits, eg: `260605`) among the parent folders of the run"
+        name = f"{run.parent.name}_{run.name}"
+        logging.warning(
+            "no dated folder (name starting with 6 digits) above %s: named %s.dat", rel(run), name
         )
-    name = "_".join((dated.name, *run.relative_to(dated).parts))
+    else:
+        name = "_".join((dated.name, *run.relative_to(dated).parts))
     return (outdir or run.parent) / f"{name}.dat"
 
 
@@ -167,10 +177,12 @@ def main(
     """
     Collects the `asc` files of each run into a single `.dat` file (TA layout).
 
-    Each argument is a run folder, or a folder searched recursively for `run*` folders.
-    The date is the nearest parent folder named with 6 digits. The output name is the
-    date and the path below it: `260910/run01` gives `260910/260910_run01.dat`,
-    `260910/PCF/PBBO/run01` gives `260910/PCF/PBBO/260910_PCF_PBBO_run01.dat`.
+    Each argument is a run folder, or a folder searched recursively for `run*` folders
+    (any case; a run is collected once, even if arguments overlap).
+    The date is the nearest parent folder whose name starts with 6 digits. The output name
+    is that folder name and the path below it: `260910/run01` gives `260910/260910_run01.dat`,
+    `260910/PCF/PBBO/run01` gives `260910/PCF/PBBO/260910_PCF_PBBO_run01.dat`. Without
+    a dated folder, the name is `<parent folder>_<run folder>.dat`, with a warning.
     Existing outputs are skipped, unless `--force`. With `--step first`, the delay pixel
     is removed from the data.
     """
@@ -178,12 +190,13 @@ def main(
         logging.getLogger().setLevel(logging.DEBUG)
 
     runs: list[Path] = []
+    seen: set[Path] = set()  # a run is collected once, even if arguments overlap.
     for path in paths or [Path(".")]:
         found = find_runs(path, pattern)
         if not found:
             logging.error("No run folders with files matching '%s' in: %s", pattern, rel(path))
             raise typer.Exit(code=1)
-        runs.extend(found)
+        runs.extend(r for r in found if r.resolve() not in seen and not seen.add(r.resolve()))
 
     if outdir is not None:
         outdir.mkdir(parents=True, exist_ok=True)

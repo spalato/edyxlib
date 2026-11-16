@@ -197,20 +197,24 @@ def find_csv(sources: list[Path]) -> list[Path]:
 
 
 def output_path(csv: Path, outdir: Path) -> Path:
-    """`<date>_<stem>_corr.dat`: the date is the csv's folder name, or the stem's prefix."""
+    """`<date>_<stem>_corr.dat`, the stem without its leading date.
+
+    The date is the leading 6 digits of the file name, else the first 6 digits of the
+    nearest ancestor folder whose name starts with 6 digits. Without a date, the output
+    is `<stem>_corr.dat`, with a warning.
+    """
     stem = csv.stem
     m = re.match(r"(\d{6})(?:_|$)", stem)
-    if re.fullmatch(r"\d{6}", csv.resolve().parent.name):
-        date = csv.resolve().parent.name
-    elif m:
+    if m:
         date = m.group(1)
     else:
-        raise ValueError(
-            "no date: the parent folder name or the file name should start with 6 digits "
-            "(eg: `261006`)"
-        )
-    stem = re.sub(r"^\d{6}_", "", stem)
-    return outdir / f"{date}_{stem}_corr.dat"
+        dated = next((p for p in csv.resolve().parents if re.match(r"\d{6}", p.name)), None)
+        date = dated.name[:6] if dated is not None else None
+    stem = re.sub(r"^\d{6}(_|$)", "", stem) if m else stem
+    if date is None:
+        logging.warning("no date found in the file name or the parent folders of %s", rel(csv))
+        return outdir / f"{stem}_corr.dat"
+    return outdir / ("_".join(x for x in (date, stem, "corr") if x) + ".dat")
 
 
 def settings_line(reps) -> str:
@@ -305,7 +309,8 @@ def main(
 
     Reads the Cary Eclipse csv files, averages the replicas that share the grid and the
     settings of the majority (the others are excluded, with a warning), multiplies by the
-    intensity calibration, and writes `<date>_<stem>_corr.dat` (columns: wl, intensity).
+    intensity calibration, and writes `<date>_<stem>_corr.dat` (columns: wl, intensity),
+    the date from the file name or a parent folder name.
     A file with a saturated replica, or without a majority, fails: choose with `--use`.
     Existing outputs are skipped, unless `--force`.
     """

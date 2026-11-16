@@ -104,6 +104,12 @@ def test_pcf_scales_exact():
             np.testing.assert_allclose(scaled[i, o], scaled[j, o], atol=1e-10)
 
 
+def test_pcf_scales_singular():
+    pcfs = np.array([[1, 1, np.nan], [0, 0, 1.0]])
+    with pytest.raises(ValueError):
+        pcf_scales(pcfs)
+
+
 def _objective(s, pcfs):
     tot = 0.0
     D = len(pcfs)

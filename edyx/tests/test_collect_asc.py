@@ -120,9 +120,31 @@ def test_collect_outdir(day, tmp_path):
 def test_collect_no_dated_ancestor(tmp_path, caplog):
     make_run(tmp_path / "data" / "run01")
     result = invoke(app, tmp_path / "data")
-    assert result.exit_code == 1
+    assert result.exit_code == 0, result.output
     assert "no dated folder" in caplog.text
-    assert not (tmp_path / "data" / "data_run01.dat").exists()
+    assert (tmp_path / "data" / "data_run01.dat").exists()
+
+
+def test_collect_dated_folder_names(tmp_path):
+    make_run(tmp_path / "260605b" / "run01")
+    make_run(tmp_path / "260601" / "260605_extra" / "run01")
+    assert invoke(app, tmp_path / "260605b", tmp_path / "260601").exit_code == 0
+    assert (tmp_path / "260605b" / "260605b_run01.dat").exists()
+    assert (tmp_path / "260601" / "260605_extra" / "260605_extra_run01.dat").exists()
+
+
+def test_collect_run_case_insensitive(tmp_path):
+    make_run(tmp_path / "260605" / "Run01")
+    assert invoke(app, tmp_path / "260605").exit_code == 0
+    assert (tmp_path / "260605" / "260605_Run01.dat").exists()
+
+
+def test_collect_overlapping_arguments_once(day, caplog):
+    caplog.set_level("INFO")
+    result = invoke(app, day, day / "PCF", day / "PCF" / "PBBO" / "run01", "--force")
+    assert result.exit_code == 0, result.output
+    assert caplog.text.count("Saving to") == 3
+    assert all(o.exists() for o in outputs(day))
 
 
 def test_flups_help_texts():

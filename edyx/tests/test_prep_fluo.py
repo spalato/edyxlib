@@ -279,12 +279,29 @@ def test_prep_failed_file_does_not_stop_others(tmp_path):
     assert (tmp_path / "out" / "261006_C153_ac_1mm_corr.dat").exists()
 
 
-def test_prep_no_date(tmp_path):
+def test_prep_no_date(tmp_path, caplog):
     f = tmp_path / "nodate" / "C153.csv"
     f.parent.mkdir()
     shutil.copy(D261006 / "C153_ac_1mm.csv", f)
-    assert run(str(f), "--outdir", str(tmp_path / "out")).exit_code == 1
-    assert not list((tmp_path / "out").glob("*.dat"))
+    result = run(str(f), "--outdir", str(tmp_path / "out"))
+    assert result.exit_code == 0, result.output
+    assert "no date" in caplog.text
+    assert (tmp_path / "out" / "C153_corr.dat").exists()
+
+
+@pytest.mark.parametrize(
+    "path, name",
+    [
+        ("Fluo/2026/260605/260604_C153.csv", "260604_C153_corr.dat"),
+        ("260605/Fluo/PBBO_ac_all.csv", "260605_PBBO_ac_all_corr.dat"),
+        ("261006/C153_ac_1mm.csv", "261006_C153_ac_1mm_corr.dat"),
+        ("260605/260605.csv", "260605_corr.dat"),
+    ],
+)
+def test_prep_output_path(tmp_path, path, name):
+    from edyx.scripts.prep_fluo import output_path
+
+    assert output_path(tmp_path / path, Path("out")).name == name
 
 
 def test_prep_default_source(fluo261006, tmp_path, monkeypatch):

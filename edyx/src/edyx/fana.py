@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.ndimage import generic_filter
 from scipy.signal import medfilt2d
+from scipy.sparse.csgraph import connected_components
 from edyx.units import nm2cmi
 from edyx.tana import shift_kin, shift_trace  # shared with TA
 from edyx.calib import interp_calibration
@@ -235,7 +236,8 @@ def pcf_scales(pcfs):
     ------
     ValueError
         If the dyes do not form one overlapping group (a dye, or a group of dyes,
-        overlaps none of the others). The message lists the groups.
+        overlaps none of the others). The message lists the groups. Also if the
+        system is singular (eg: a curve is zero over all its overlaps).
     """
     p = np.ma.filled(np.ma.asarray(pcfs, dtype=float), np.nan)
     if p.ndim != 2:
@@ -256,26 +258,19 @@ def pcf_scales(pcfs):
             A[i, i] += np.sum(p[i, o] ** 2)
             A[j, j] += np.sum(p[j, o] ** 2)
             A[i, j] = A[j, i] = -np.sum(p[i, o] * p[j, o])
-    # connectivity of the overlap graph (BFS from each unvisited dye)
-    seen = np.zeros(D, dtype=bool)
-    groups = []
-    for start in range(D):
-        if seen[start]:
-            continue
-        group, queue = [], [start]
-        seen[start] = True
-        while queue:
-            k = queue.pop()
-            group.append(int(k))
-            for n in np.flatnonzero(overlap[k] & ~seen):
-                seen[n] = True
-                queue.append(n)
-        groups.append(sorted(group))
+    _, labels = connected_components(overlap, directed=False)
+    groups = [sorted(int(k) for k in np.flatnonzero(labels == g)) for g in range(labels.max() + 1)]
+    groups.sort()
     if len(groups) > 1:
         raise ValueError(
             "the PCF curves do not form one overlapping group; dye indices of "
             f"each group: {groups}"
         )
     s = np.ones(D)
-    s[1:] = np.linalg.solve(A[1:, 1:], -A[1:, 0])
+    try:
+        s[1:] = np.linalg.solve(A[1:, 1:], -A[1:, 0])
+    except np.linalg.LinAlgError:
+        raise ValueError(
+            "the PCF curves cannot be scaled: singular system (a curve is zero over its overlaps?)"
+        ) from None
     return s

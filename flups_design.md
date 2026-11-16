@@ -94,9 +94,11 @@ Raw files are never touched; everything derived goes in the FLUPS dated folder.
 | t0 curve | `<date>_t0_<source>.toml`, e.g. `260605_t0_PBBO.toml` | next to the notebook | `flups_1` |
 | processed measurement | `<date>_<root>.dat` | next to the notebook | `flups_3` |
 
-- In `<date>_<stem>_corr.dat`, `<date>` is the name of the fluorimeter's dated folder
-  and `<stem>` the raw file name without a leading date: 260605 (`260605_C153_...`)
-  and 261006 (`C153_...`) give the same pattern.
+- In `<date>_<stem>_corr.dat`, `<date>` is the leading date of the file name, else the
+  first 6 digits of the nearest parent folder whose name starts with 6 digits; `<stem>`
+  is the file name without its leading date. No date: `<stem>_corr.dat`, with a warning.
+- collect-asc: the dated folder is the nearest parent whose name starts with 6 digits,
+  used as is (`260605b`). No dated folder: `<parent>_<run>.dat`, with a warning.
 - The dye name in the PCF file names is the name of the `PCF\<dye>` folder. The
   notebook pairs each FLUPS dye with its reference explicitly (a dict literal), so a
   raw name that breaks the pattern (`PBBO_ac_all.csv`) still works.
