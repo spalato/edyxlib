@@ -1,8 +1,10 @@
 import numpy as np
-from scipy.ndimage import median_filter, generic_filter
+from scipy.ndimage import generic_filter
 from scipy.signal import medfilt2d
+from scipy.sparse.csgraph import connected_components
 from edyx.units import nm2cmi
 from edyx.tana import shift_kin, shift_trace  # shared with TA
+from edyx.calib import interp_calibration
 import os
 import tomllib
 import logging
@@ -12,6 +14,24 @@ __dirpath = os.path.dirname(os.path.abspath(__file__))
 
 
 def despike_median_p(data, size, threshold=3):
+    """Replace spikes by the local median; threshold relative to the local span.
+
+    Parameters
+    ----------
+    data : (W, T) ndarray
+        Data.
+    size : (int, int)
+        Median filter size, in pixels x delays.
+    threshold : float
+        Points deviating from the median by more than `threshold` times the local
+        5-95 % span (same window as the median) are replaced by the median.
+        Slow.
+
+    Returns
+    -------
+    (W, T) ndarray
+        Despiked data.
+    """
     filtered = medfilt2d(data, size)
     span = generic_filter(data, span595, size=size)
     reject = np.abs(data-filtered)/span > threshold
@@ -19,6 +39,23 @@ def despike_median_p(data, size, threshold=3):
 
 
 def despike_median(data, size, threshold=100):
+    """Replace spikes by the local median.
+
+    Parameters
+    ----------
+    data : (W, T) ndarray
+        Data.
+    size : (int, int)
+        Median filter size, in pixels x delays.
+    threshold : float
+        Points deviating from the median by more than `threshold` (absolute, in
+        the units of `data`) are replaced by the median.
+
+    Returns
+    -------
+    (W, T) ndarray
+        Despiked data.
+    """
     filtered = medfilt2d(data, size)
     reject =np.abs(data-filtered) > threshold
     return np.where(reject, filtered, data)
@@ -27,39 +64,6 @@ def despike_median(data, size, threshold=100):
 def span595(y):
     lo, hi = np.percentile(y, [5,95])
     return hi-lo
-
-
-def span_partition(y):
-    mrg = max(1, y//20)
-    lo = mrg
-    hi = y.size-mrg
-    y.partition((lo, hi))
-    return y[hi] - y[lo]
-
-def despike_median_partition(data, size, threshold=3):
-    filtered = medfilt2d(data, size)
-    span = generic_filter(data, span_partition, size=size)
-    reject = np.abs(data-filtered)/span > threshold
-    return np.where(reject, filtered, data)
-
-
-def despike_median_slow(data, size, threshold=3):
-    filtered = medfilt2d(data, size)
-    extended = [s+1 for s in size]
-    stds = generic_filter(data, np.std, size=extended)
-    reject = np.abs(data-filtered)/stds > threshold
-    return np.where(reject, filtered, data)
-
-
-def despike_median_old(data, size, threshold=5):
-    cutoff = np.std(data) * threshold
-    filtered = median_filter(data, size=size)
-    reject = np.abs(filtered-data) > cutoff
-    despiked = np.copy(data)
-    despiked[reject] = filtered[reject]
-    return despiked
-
-
 
 
 def lognorm(x, amp, x0, delta, gamma):
@@ -181,24 +185,92 @@ def fluo_wl(wl_u, gate=1340):
     return 1 / (1 / np.asarray(wl_u, dtype=float) - 1 / gate)
 
 
-def pcf_correct(wl, s, pcf_wl, pcf, left=None, right=None):
-    """Multiply by the photometric correction function (PCF), interpolated on `wl`.
+def pcf_correct(wl_u, s, cal, outside="nan"):
+    """Multiply by the photometric correction function (PCF), interpolated on `wl_u`.
 
     Parameters
     ----------
-    wl : (W,) ndarray
-        Wavelength axis of `s`.
+    wl_u : (W,) ndarray
+        Detected (upconverted) wavelength axis of `s`, in nm.
     s : (..., W, T) ndarray or masked array
         Trace or stack.
-    pcf_wl, pcf : (N,) ndarray
-        Wavelengths (ascending) and values of the PCF.
-    left, right : float, optional
-        Passed to `np.interp`. Default holds the end values; use `np.nan` to
-        refuse extrapolation.
+    cal : dict
+        PCF calibration, from `read_calibration`, on the axis `wl_u`.
+    outside : "error", "constant" or "nan"
+        Wavelengths outside the range of the PCF, passed to `interp_calibration`:
+        raise, hold the end values, or NaN.
 
     Returns
     -------
-    (..., W, T) ndarray or masked array
-        Corrected data.
+    (..., W, T) masked array
+        Corrected data. Wavelengths where the PCF is NaN (outside its valid range
+        with `outside="nan"`, or NaN in the PCF) are masked. An input mask is kept.
     """
-    return s * np.interp(wl, pcf_wl, pcf, left=left, right=right)[:, np.newaxis]
+    pcf = interp_calibration(cal, wl_u, outside=outside)
+    bad = np.isnan(pcf)
+    out = s * np.where(bad, 1.0, pcf)[:, np.newaxis]
+    return np.ma.masked_where(np.broadcast_to(bad[:, np.newaxis], np.shape(out)), out)
+
+
+def pcf_scales(pcfs):
+    """Scales that stitch the PCF curves of several dyes together.
+
+    Minimizes, over all pairs of dyes i < j and the points w where both curves
+    are valid, the sum of ``(s_i * pcfs[i, w] - s_j * pcfs[j, w])**2``. The first
+    dye is the reference (``s[0] == 1``); the scales are not bounded. The problem
+    is quadratic in `s` and solved in closed form. This replaces the lab's
+    Nelder-Mead fit of the same objective.
+
+    Parameters
+    ----------
+    pcfs : (D, W) ndarray or masked array
+        PCF curve of each dye on a common wavelength grid; NaN (or masked)
+        outside the valid range of each dye.
+
+    Returns
+    -------
+    (D,) ndarray
+        Scales, with ``s[0] == 1``.
+
+    Raises
+    ------
+    ValueError
+        If the dyes do not form one overlapping group (a dye, or a group of dyes,
+        overlaps none of the others). The message lists the groups. Also if the
+        system is singular (eg: a curve is zero over all its overlaps).
+    """
+    p = np.ma.filled(np.ma.asarray(pcfs, dtype=float), np.nan)
+    if p.ndim != 2:
+        raise ValueError(f"pcfs must be (D, W), got shape {p.shape}")
+    D = p.shape[0]
+    valid = np.isfinite(p)
+    p = np.where(valid, p, 0.0)
+    if D == 1:
+        return np.ones(1)
+    A = np.zeros((D, D))
+    overlap = np.zeros((D, D), dtype=bool)
+    for i in range(D):
+        for j in range(i + 1, D):
+            o = valid[i] & valid[j]
+            if not o.any():
+                continue
+            overlap[i, j] = overlap[j, i] = True
+            A[i, i] += np.sum(p[i, o] ** 2)
+            A[j, j] += np.sum(p[j, o] ** 2)
+            A[i, j] = A[j, i] = -np.sum(p[i, o] * p[j, o])
+    _, labels = connected_components(overlap, directed=False)
+    groups = [sorted(int(k) for k in np.flatnonzero(labels == g)) for g in range(labels.max() + 1)]
+    groups.sort()
+    if len(groups) > 1:
+        raise ValueError(
+            "the PCF curves do not form one overlapping group; dye indices of "
+            f"each group: {groups}"
+        )
+    s = np.ones(D)
+    try:
+        s[1:] = np.linalg.solve(A[1:, 1:], -A[1:, 0])
+    except np.linalg.LinAlgError:
+        raise ValueError(
+            "the PCF curves cannot be scaled: singular system (a curve is zero over its overlaps?)"
+        ) from None
+    return s

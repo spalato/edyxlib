@@ -73,7 +73,7 @@ Their full discussion (findings, alternatives, dates) is in git history, up to c
 | --- | --- |
 | `io` | `read_dat`, `write_dat`, `stack_traces` (checks the axes), `load_txt`, `load_npz`, `load_asc_series`, `read_ab_dat`/`read_ab_stack`, axis constants |
 | `tana` | shared by TA and FLUPS: `shift_trace(t, s, t0, edges="clip"\|"nan")`, `shift_kin`, `crop`, `subtract_pre_t0`, `avg_scans`, `avg_spectra`, `band_integral`, `band_average`; ITOS: `load_itos_spectrum`, `itos_calibration` |
-| `fana` | FLUPS: `despike_median` (and variants), `pcf_correct`, `fluo_wl(wl_u, gate=1340)`, reference spectra |
+| `fana` | FLUPS: `despike_median`, `despike_median_p`, `pcf_correct(wl_u, s, cal)`, `pcf_scales`, `fluo_wl(wl_u, gate=1340)`, reference spectra |
 | `calib` | `write_calibration`, `read_calibration`, `interp_calibration` |
 | `plot` | `plot_maps` (N maps side by side, defaults by signal kind), `plot_flups` |
 | `units`, `utils` | `nm2ev`, ...; `between`, `argnear`, ... |
@@ -256,8 +256,9 @@ Kept open:
     or 2 files;
   - the t0 model;
   - excluded ranges;
-  - Jacobians (`wl_u` to `wl_f`, wavelength to energy, FLUPS to stimulated-emission
-    equivalent; exponents to confirm).
+  - the conversion from the FLUPS signal to the equivalent stimulated-emission signal,
+    to compare with TA. The Jacobians between `wl_u` and `wl_f` (analytic,
+    `d wl_f / d wl_u = wl_f**2 / wl_u**2`) and wavelength to energy are settled.
 - **Later:**
   - a metadata structure for output names and headers (users document well today);
   - assisted t0 picking (pre-placed points, accepted or moved by the user);
