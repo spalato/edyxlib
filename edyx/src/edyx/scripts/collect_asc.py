@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -28,14 +29,35 @@ def rel(path: Path) -> str:
 
 
 def find_runs(path: Path, pattern: str) -> list[Path]:
-    """Return the run folders in `path`.
+    """Return the run folders under `path`, sorted.
 
-    `path` is either a run folder (contains files matching `pattern`), returned as is,
-    or a dated folder: all its `run*` subfolders containing files matching `pattern`.
+    A run folder is a directory named `run*` containing files matching `pattern`.
+    If `path` is itself a run folder, it is returned as is. Otherwise, `path` is searched
+    recursively (eg: a dated folder, `PCF` or `PCF/<dye>`).
     """
-    if any(path.glob(pattern)):
+
+    def is_run(p: Path) -> bool:
+        return p.is_dir() and p.name.startswith("run") and any(p.glob(pattern))
+
+    if is_run(path.resolve()):
         return [path]
-    return sorted(p for p in path.glob("run*") if p.is_dir() and any(p.glob(pattern)))
+    return sorted(p for p in path.rglob("run*") if is_run(p))
+
+
+def output_path(run: Path, outdir: Optional[Path]) -> Path:
+    """Output file of a (resolved) run folder: `<date>_<parts below the date>.dat`.
+
+    The date is the name of the nearest ancestor of `run` made of 6 digits. For
+    `260605/PCF/PBBO/run01`, the name is `260605_PCF_PBBO_run01.dat`.
+    The file goes next to the run folder, or in `outdir`.
+    """
+    dated = next((p for p in run.parents if re.fullmatch(r"\d{6}", p.name)), None)
+    if dated is None:
+        raise ValueError(
+            "no dated folder (6 digits, eg: `260605`) among the parent folders of the run"
+        )
+    name = "_".join((dated.name, *run.relative_to(dated).parts))
+    return (outdir or run.parent) / f"{name}.dat"
 
 
 class _Advancing:
@@ -56,11 +78,19 @@ class _Advancing:
             self.progress.advance(self.task)
 
 
-def collect_run(run: Path, pattern: str, step: str, outdir: Optional[Path], progress) -> Path:
-    """Collect the `asc` files of a single run folder into `<dated folder>_<run>.dat` (TA layout)."""
+def collect_run(
+    run: Path, pattern: str, step: str, outdir: Optional[Path], force: bool, progress
+) -> Optional[Path]:
+    """Collect the `asc` files of a single run folder into `<date>_<path>.dat` (TA layout).
+
+    Returns the output path, or None if the run was skipped (output exists, not `force`).
+    """
     run = run.resolve()
+    output = output_path(run, outdir)
+    if output.exists() and not force:
+        logging.info("skipped, exists: %s (--force to collect again)", rel(output))
+        return None
     fnames = sorted((str(p) for p in run.glob(pattern)), key=frame_idx)
-    output = (outdir or run.parent) / f"{run.parent.name}_{run.name}.dat"
 
     logging.info("Loading %d files from: %s", len(fnames), rel(run))
     if progress is None:
@@ -72,35 +102,47 @@ def collect_run(run: Path, pattern: str, step: str, outdir: Optional[Path], prog
         finally:
             progress.remove_task(task)
 
+    if step == "first":
+        header = "layout: wl x t (TA .dat); delay read from pixel 0, pixel 0 removed"
+    else:
+        header = f"layout: wl x t (TA .dat); step: {step}, all pixels kept"
     logging.info("Saving to: %s", rel(output))
-    write_dat(str(output), *data, header="layout: wl x t (TA .dat)")
+    write_dat(str(output), *data, header=header)
     return output
+
+
+EPILOG = (
+    "usage: `collect-asc` (all runs under the current folder), "
+    "`collect-asc 260910/PCF` (a subtree), `collect-asc 260910/run01` (one run)"
+)
 
 
 # Note: unlike older versions, no `windows_expand_args=False`: arguments are folders, so
 # letting Click expand wildcards on Windows makes `collect-asc 260910/run0*` work.
-@app.command(
-    epilog="usage: `collect-asc 260910` (all runs), `collect-asc 260910/run01` (one run)",
-)
+@app.command(epilog=EPILOG)
 def main(
     paths: Annotated[
-        list[Path],
+        Optional[list[Path]],
         typer.Argument(
             exists=True,
             file_okay=False,
-            help="Run folder (eg: `260910/run01`) or dated folder containing `run*` folders "
-            "(eg: `260910`). Wildcards are accepted.",
+            help="Run folder (eg: `260910/run01`), or any folder containing `run*` folders "
+            "at any depth (eg: `260910`, `260910/PCF`). Default: the current folder. "
+            "Wildcards are accepted.",
         ),
-    ],
+    ] = None,
     outdir: Annotated[
         Optional[Path],
         typer.Option(
             "--outdir",
             "-o",
             file_okay=False,
-            help="Output folder. Defaults to the dated folder, next to the run folders.",
+            help="Output folder. Defaults to the parent of each run folder.",
         ),
     ] = None,
+    force: Annotated[
+        bool, typer.Option("--force", help="Overwrite existing output files.")
+    ] = False,
     step: Annotated[
         str,
         typer.Option(
@@ -123,16 +165,20 @@ def main(
     pbar: Annotated[bool, typer.Option("--pbar/--no-pbar", help="Show a progress bar.")] = True,
 ) -> None:
     """
-    Collects the `asc` files of each run into a single `<date>_<run>.dat` file (TA layout).
+    Collects the `asc` files of each run into a single `.dat` file (TA layout).
 
-    Each argument is either a run folder, or a dated folder, in which case every `run*`
-    folder inside it is collected. For `260910/run01`, output is `260910/260910_run01.dat`.
+    Each argument is a run folder, or a folder searched recursively for `run*` folders.
+    The date is the nearest parent folder named with 6 digits. The output name is the
+    date and the path below it: `260910/run01` gives `260910/260910_run01.dat`,
+    `260910/PCF/PBBO/run01` gives `260910/PCF/PBBO/260910_PCF_PBBO_run01.dat`.
+    Existing outputs are skipped, unless `--force`. With `--step first`, the delay pixel
+    is removed from the data.
     """
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
     runs: list[Path] = []
-    for path in paths:
+    for path in paths or [Path(".")]:
         found = find_runs(path, pattern)
         if not found:
             logging.error("No run folders with files matching '%s' in: %s", pattern, rel(path))
@@ -149,7 +195,7 @@ def main(
     try:
         for run in runs:
             try:
-                collect_run(run, pattern, step, outdir, progress)
+                collect_run(run, pattern, step, outdir, force, progress)
             except Exception as e:
                 # full traceback only with --verbose.
                 logging.error("Failed to process %s: %s: %s", rel(run), type(e).__name__, e,

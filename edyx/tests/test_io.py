@@ -136,9 +136,9 @@ def test_load_asc_series_first(asc_files):
     wl, fns = asc_files
     t, w, s = load_asc_series(fns)
     assert np.allclose(t, [0, 0.5, 1.0])
-    assert np.allclose(w, wl)
-    assert s.shape == (4, 3)
-    assert np.allclose(s[1], [1, 2, 3])
+    assert np.allclose(w, wl[1:])
+    assert s.shape == (3, 3)
+    assert np.allclose(s[0], [1, 2, 3])
 
 
 def test_load_asc_series_step(asc_files):

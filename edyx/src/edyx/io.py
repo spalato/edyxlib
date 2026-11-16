@@ -236,8 +236,10 @@ def load_asc_series(fnames, step="first"):
         The list of files to load.
     step: float, or str in {"first", "filename"}. Default: "first".
         The timestep, in ps.
-        If "first" (default), the position is read from the first pixel of each spectrum.
+        If "first" (default), the delay is read from the first pixel of each spectrum, and
+        that pixel is removed from `wl` and `trace`.
         If "filename", the timestep will be found from the filename as `_sNNN_`.
+        With a number or "filename", all pixels are kept.
 
     Returns
     -------
@@ -268,7 +270,8 @@ def load_asc_series(fnames, step="first"):
     # compute time axis
     # TODO: test these cases.
     if step == "first":
-        delays = trace[:,0]
+        delays = trace[:, 0]
+        wl, trace = wl[1:], trace[:, 1:]  # pixel 0 holds the delay, not signal.
     elif step == "filename":
         step = float(re.search(r"_s(\d+)_", first_name).group(1))
         delays = np.arange(0, trace.shape[0])*step
