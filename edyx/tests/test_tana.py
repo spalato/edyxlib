@@ -189,6 +189,7 @@ def test_avg_spectra(data):
 # ITOS wavelength calibration -------------------------------------------------
 
 DATA = Path(__file__).parents[1] / "examples" / "data"
+DAY = Path(__file__).parents[1] / "examples" / "250709"  # the day's raw files
 PEAKS = dict(width=4, prominence=40, height=200)  # the lab's choice on 250709
 
 
@@ -219,7 +220,7 @@ def test_itos_calibration_needs_two_peaks():
 def test_itos_calibration_applies_to_a_scan():
     """Make, then apply: the scan's measured axis is within range (outside='error')."""
     cal = itos_calibration(*load_itos(), **PEAKS)
-    _, wl, _ = read_dat(DATA / "s40.dat")
+    _, wl, _ = read_dat(DAY / "s40.dat")
     wl_cal = interp_calibration(cal, wl)
     assert wl_cal.shape == wl.shape and np.all(np.diff(wl_cal) > 0)
     assert 2.0 < wl_cal[0] - wl[0] < 2.5  # 2.3 nm at 276 nm
