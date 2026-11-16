@@ -160,7 +160,8 @@ the step with a warning.
 
 ## flups_1_t0
 
-1. Shared first steps on the dye run(s). No PCF, no shift.
+1. Shared first steps on the t0 runs of one dye: stacked, rejected and averaged as in TA.
+   Which runs belong together is the user's choice (`fnames`). No PCF, no shift.
 2. Band kinetics: a dict `{wl_center: band_average(wl_u, avg, (lo, hi))}`, including the
    cross-correlation / Raman band(s). Bands are a decision literal.
 3. Fits, in the template with lmfit (already an `edyx` dependency):
@@ -168,7 +169,8 @@ the step with a warning.
    - dye bands: `edyx.models.conv_exp` + constant; second pass optional, with tau fixed
      to the weighted mean of the first.
 4. Points: one array of rows `(wl_u, t0, t0_err)`, CC/Raman and dye together.
-5. The template shows two dye runs on different band ranges, combined in one point list.
+5. Several dyes (to cover a wider range): the runs of each dye up to the points, then the
+   points of all dyes stacked before the curve fit. A note in the template, not code.
 6. Curve: `t0 = a0 + a1/wl_u**2 + a2/wl_u**4`, weighted by `1/t0_err`. A polynomial of
    degree 2 in `1/wl_u**2`:
    `Polynomial.fit(points[:, 0]**-2, points[:, 1], 2, w=1/points[:, 2]).convert()`.
