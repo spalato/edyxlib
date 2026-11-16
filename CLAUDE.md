@@ -9,7 +9,7 @@ Lab code (edyx@HU) being reorganized from scattered conda-based code into a uv-m
 - `edyx/` (0.2.0 released; `main` has unreleased work such as `edyx.calib`): I/O, TA (`tana`) and FLUPS (`fana`) processing, calibration files, matplotlib plots (`edyx.plot`), CLI scripts (`spectra-fit`, `collect-asc`).
 - `pyspan/` (0.3.3): interactive decision tools (`Overlay`, `ScanInspector`, `T0Picker`, `Linear`), and the TA templates in `pyspan/examples/TA/`.
 - `andor_c/`: legacy `.pgm` files. Instrument and experiment packages are still planned.
-- Example data: `edyx/examples/250709/` (one day's raw TA files) and `edyx/examples/data/` (other copies of lab data, unchanged).
+- Example data: `edyx/examples/<date>/`, one folder per day as in the lab (`250709` TA, `240619` FLUPS): copies of lab data, unchanged. The notebooks are in `pyspan/examples/`.
 
 Read before structural work:
 - [design.md](design.md): principles, conventions (axes, argument order, masks, files), the edyx core, pyspan tools, calibration files, templates, open points. The reference for the TA, pyspan and calibration design.

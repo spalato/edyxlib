@@ -86,7 +86,8 @@ import logging; logging.basicConfig(level=logging.INFO)
 
 ## Examples
 
-`examples/` holds notebooks on the `edyx` example data (`../edyx/examples/data`). They are
+`examples/` holds notebooks on the `edyx` example data, one folder per day
+(`../edyx/examples/250709`, `../edyx/examples/240619`). They are
 templates to start from: copy one into the day folder and set `data_dir = Path(".")`.
 
 - TA (250709), in `examples/TA/`, run in this order:

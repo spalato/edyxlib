@@ -153,10 +153,8 @@ an ordinary `edyx` call or plain numpy.
 
 ## Templates and examples
 
-- `edyx/examples`:
-  - `ta_average_t0` and `flups_average_t0_pcf` reproduce the lab's 250709 TA and
-    240619 FLUPS outputs;
-  - they convert the legacy calibration files.
+- The templates are in `pyspan/examples`; `edyx` has no example notebooks
+  (2026-11-16). Converting the legacy calibration files: `edyx/README.md`.
 - `pyspan/examples/TA`, run in this order:
   1. `ta_1_linear_itos`: `Linear`, the ITOS calibration with a plot of the paired
      peaks, the calibration file, spectra saved on the calibrated axis.
@@ -164,7 +162,8 @@ an ordinary `edyx` call or plain numpy.
      pre-t0 subtraction, `T0Picker`, t0 fit and calibration file, shift, save.
 - `pyspan/examples/FLUPS`: `flups_compare`, and the lab notebooks collected for the
   next round.
-- Data: `edyx/examples/data` holds copies of lab data, unchanged (see its README).
+- Data: `edyx/examples/<date>/`, one folder per day as in the lab (`250709`, `240619`):
+  copies of lab data, unchanged, with the lab's outputs for checks (see each README).
 
 ## Why: what the lab notebooks showed
 
@@ -191,9 +190,10 @@ an ordinary `edyx` call or plain numpy.
   `edyx>=0.3`. Release with `scripts/release.ps1`.
 - **FLUPS templates**, from the collected notebooks. Two of them hardcode a local
   path; use `data_dir = Path(".")`.
-- **Regression tests in CI.** The edyx examples reproduce the lab outputs, but pytest
-  doesn't run them. Either a pytest that runs the same steps, or executing the
-  notebooks.
+- **Regression tests in CI.** Nothing checks the full pipelines against the lab's
+  outputs since the edyx examples were removed: `ta_1` checks only the linear spectra.
+  The data is kept for it (`250709/s4044*.dat`, `240619/240619_OMeZs_sig_*.txt`).
+  Either a pytest that runs the same steps, or executing the notebooks.
 
 ## Provenance and sidecars (discussed 2026-11-14, not implemented)
 

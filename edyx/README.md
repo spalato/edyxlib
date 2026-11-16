@@ -75,7 +75,8 @@ plt.plot(cal["x"], cal["y"])
 
 ### Old files
 
-Convert once, explicitly, then use the toml file (examples: `examples/*.ipynb`).
+Convert once, explicitly, then use the toml file. The files below are in
+`examples/250709/` and `examples/240619/`.
 
 ```python
 # TA t0 curve, <run>_t0corr.npz (applied by index before: now by value)
