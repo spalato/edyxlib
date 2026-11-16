@@ -100,6 +100,14 @@ write_calibration("240619_t0_PBBO.toml", "t0", "wl_u", wl_u, t0,
 d = np.load("240619_pcf_final.npz")
 write_calibration("240619_pcf_dyes.toml", "pcf", "wl_u", d["wl"], d["pcf"],
                   units=["nm", ""], date=datetime.date(2024, 6, 19), source="dyes")
+
+# Fluorimeter intensity calibration, EmCorr_combined_220_800.csv (columns: wavelength, pcf)
+wl, factor = np.loadtxt("EmCorr_combined_220_800.csv", delimiter=",", skiprows=1).T
+write_calibration("emcorr_cary-eclipse.toml", "emcorr", "wl", wl, factor,
+                  units=["nm", ""], source="EmCorr_combined_220_800.csv",
+                  instrument="Cary Eclipse", instrument_serial="MY2441CG03",
+                  notes="Fluorimeter emission intensity correction. Multiply the measured "
+                        "spectrum. Valid for all settings.")
 ```
 
 The TA scans recorded so far are on the measured axis (`wl_raw`): the ITOS calibration

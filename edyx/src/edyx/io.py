@@ -2,6 +2,7 @@ import numpy as np
 from itertools import dropwhile
 import re
 import logging
+from collections import namedtuple
 
 logger = logging.getLogger(__name__)
 
@@ -186,6 +187,89 @@ def read_cary_uv(fname):
         delimiter = ","
     )
     return header, data
+
+
+CaryReplica = namedtuple("CaryReplica", "name wl intensity meta")
+CaryReplica.__doc__ = "One replica of a Cary Eclipse csv: name, wavelength, intensity, metadata dict."
+
+
+def read_cary_fluo(fname):
+    """Read the replicas of a Cary Eclipse fluorimeter csv export.
+
+    For the Cary Eclipse fluorimeter. For the Cary UV-Vis, use `read_cary_uv`.
+
+    The file holds one column pair (`Wavelength (nm)`, `Intensity (a.u.)`) per replica,
+    followed by one block of metadata per replica. Replicas can have different lengths
+    (the shorter ones leave empty fields). Replica names can repeat: replicas are
+    identified by their position in the file.
+
+    Parameters
+    ----------
+    fname : str, path-like
+        Input file name.
+
+    Returns
+    -------
+    replicas : list of CaryReplica
+        In file order. Each is a namedtuple `(name, wl, intensity, meta)`: `wl` and
+        `intensity` are 1D arrays with the rows of that replica, `meta` is a dict with the
+        parameter list of its metadata block (key -> value, as stripped strings, eg
+        `meta["PMT voltage (V)"]`), plus `Collection Time`.
+
+    Raises
+    ------
+    ValueError
+        If the number of metadata blocks differs from the number of replicas.
+    """
+    with open(fname, "rb") as f:
+        raw = f.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("cp1252", errors="replace")
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    table, _, rest = text.partition("\n\n")
+    lines = table.split("\n")
+    names = lines[0].split(",")
+    n = sum(f.strip().startswith("Wavelength") for f in lines[1].split(",")) if len(lines) > 1 else 0
+    if n == 0:
+        raise ValueError(f"{fname}: not a Cary Eclipse export (no `Wavelength` column labels in the second row)")
+    names = [names[2 * i].strip() if 2 * i < len(names) else "" for i in range(n)]
+    cols = [([], []) for _ in range(n)]
+    for ln in lines[2:]:
+        fields = ln.split(",")
+        for i in range(n):
+            if 2 * i + 1 < len(fields):
+                w, y = fields[2 * i].strip(), fields[2 * i + 1].strip()
+                if w and y:
+                    cols[i][0].append(float(w))
+                    cols[i][1].append(float(y))
+    metas = []
+    for block in rest.split("\n\n"):
+        if "Collection Time:" not in block:
+            continue
+        meta = {}
+        in_params = False
+        for ln in block.split("\n"):
+            if ln.startswith("Collection Time:"):
+                meta["Collection Time"] = ln.partition(":")[2].strip()
+            elif ln.startswith("Method Log"):
+                break
+            elif ln.startswith("Parameter List"):
+                in_params = True
+            elif in_params:
+                m = re.match(r"^(.*?\S)\s{2,}(\S.*)$", ln.rstrip())
+                if m:
+                    meta[m.group(1)] = m.group(2).strip()
+        metas.append(meta)
+    if len(metas) != n:
+        raise ValueError(
+            f"{fname}: found {n} replica(s) in the data but {len(metas)} metadata block(s)"
+        )
+    return [
+        CaryReplica(name, np.array(w), np.array(y), meta)
+        for name, (w, y), meta in zip(names, cols, metas)
+    ]
 
 
 def read_asc(fname):
