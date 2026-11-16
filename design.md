@@ -90,19 +90,24 @@ TA and FLUPS share one core, with the technique steps around it:
 A tool helps the user make a decision and returns it as plain data. The next step is
 an ordinary `edyx` call or plain numpy.
 
-| Tool | For | "Done" prints |
-| --- | --- | --- |
-| `Overlay` | comparing datasets (each on its own axes): spectra at a delay, or kinetics at a wavelength | nothing |
-| `ScanInspector` | rejecting scan data: delay ranges in a file, whole files, wavelength rows; optional RMSD threshold | `rejections`, `threshold` |
-| `T0Picker` | clicking t0 points, one wavelength row at a time (`tlim`, "Next after click") | `t0_points` |
-| `Linear` | linear spectra: repetitions, RMSD threshold (applied to all files at once), means | `threshold` |
+| Tool | For | "Done" prints | Result |
+| --- | --- | --- | --- |
+| `Overlay` | comparing datasets (each on its own axes): spectra at a delay, or kinetics at a wavelength | nothing | nothing |
+| `ScanInspector` | rejecting scan data: delay ranges in a file, whole files, wavelength rows; optional RMSD threshold | `rejections`, `threshold` | `masked()`, `mask` |
+| `T0Picker` | clicking t0 points, one wavelength row at a time (`tlim`, "Next after click") | `t0_points` | `points` |
+| `Linear` | linear spectra: repetitions, RMSD threshold (applied to all files at once), means | `threshold` | `mean_spectra` |
 
 - **Shape of a tool.** A small class, with one method per user action. These methods
   are tested without a browser. `show()` builds the widgets. The tool accepts earlier
   decisions as input, and edits are logged at INFO level.
-- **Re-running without clicking.** A decisions cell holds the pasted literal, then
-  comes the tool, then a plain data step that uses the literal. "Run all" gives the
-  same result.
+- **Re-running without clicking** (2026-11-16). A decisions cell holds the pasted
+  literal. The tool is initialized from it, and the next step uses the tool's result
+  (`insp.masked()`, `picker.points`, `lin.mean_spectra`), not a copy of its logic.
+  - The tool copies its input, so clicks never change the literal; nothing else
+    changes it either (no globals mutated by widgets).
+  - "Run all", with no clicks, gives the result recorded in the decisions cell.
+  - After clicking, the result follows the clicks, not the record: paste "Done" and
+    re-run before saving.
 - **Rejection literal.** A list of `(file, wl, t)`. Each entry is `None` (all), an
   index, or a `(start, stop)` range with stop excluded. Plain functions in
   `pyspan.decisions`: `rejection_mask`, `rmsd_vs_median`, `above_threshold`,
@@ -172,6 +177,8 @@ an ordinary `edyx` call or plain numpy.
   late delays in all files, whole files, wavelength rows.
 - Decisions depended on glob order (`[::2]`, `[0:2]`), and masks were lost silently
   (`np.interp` before the shift).
+- Interactive widgets mutated notebook globals: results depended on side effects of
+  clicks, which "Run all" did not reproduce.
 - The t0 curve was applied by index, so on another grid each wavelength silently got
   another wavelength's t0. TA and FLUPS stored their coefficients in opposite orders.
 - `ITOS_peak` overwrote data files in place. FLUPS files were t x wl, and both
