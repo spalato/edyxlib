@@ -65,7 +65,9 @@ Copies for development, not committed:
   as long as the measurement's `wl_u` is within its range.
 - `wl_f = fluo_wl(wl_u, gate)` is computed when needed, never stored as the axis of a
   calibration.
-- Jacobian `wl_u` to `wl_f`: analytic, `wl_f**2 / wl_u**2`.
+- Jacobian, analytic: `d wl_f / d wl_u = wl_f**2 / wl_u**2`. A spectrum per unit `wl_f`
+  (the fluorimeter reference) times `wl_f**2 / wl_u**2` is per unit `wl_u`; a FLUPS signal
+  (per unit `wl_u`, per pixel) times `wl_u**2 / wl_f**2` is per unit `wl_f`.
 
 ### Input files
 
@@ -145,8 +147,8 @@ Decisions: `despike_size`, `despike_threshold`, `rejections`, `threshold`.
    a number in the notebook, up to the user: `t_s = t_s - t0_offset`.
 4. PCF: `pcf_correct(wl_u, shifted, read_calibration(pcf_file))`. NaN in the PCF become
    masked points.
-5. Fluorescence axis: `wl_f = fluo_wl(wl_u, gate)`, times the Jacobian
-   `wl_f**2 / wl_u**2`, an explicit line.
+5. Fluorescence axis: `wl_f = fluo_wl(wl_u, gate)`; the signal per unit `wl_f` is the
+   signal times `wl_u**2 / wl_f**2`, an explicit line.
 6. Save on `wl_f`, figure.
 
 Missing calibrations follow `design.md`: `t0_file = None` or `pcf_file = None` skips
