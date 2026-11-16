@@ -1,14 +1,15 @@
 # edyx and pyspan: design of the processing (TA, FLUPS, calibrations)
 
-Status 2026-11-14: milestone. Done:
+Status 2026-11-16: milestone, released as edyx 0.3.1 and pyspan 0.4.0. Done:
 - the core of TA processing in `edyx`;
-- the interactive tools in `pyspan` (released 0.3.3);
+- the interactive tools in `pyspan`;
 - calibration files in `edyx`;
-- the TA templates.
+- the TA templates;
+- FLUPS: the `flups` CLI, the PCF chain and the templates.
 
-This file replaces `ta_workflow_design.md`, `pyspan_design.md` and `calibration_design.md`.
-Their full discussion (findings, alternatives, dates) is in git history, up to commit
-`30c6ab1`. Package structure and install profiles: [uv_monorepo.md](uv_monorepo.md).
+This file replaces `ta_workflow_design.md`, `pyspan_design.md` and `calibration_design.md`
+(full discussion in git history, up to commit `30c6ab1`), and `flups_design.md` (up to
+commit `7153608`). Package structure and install profiles: [uv_monorepo.md](uv_monorepo.md).
 
 ## Principles
 
@@ -30,7 +31,8 @@ Their full discussion (findings, alternatives, dates) is in git history, up to c
 - **Unix-like at the function level.** Small pure functions on basic data types:
   numpy arrays (masked during processing), built-ins, the `{fname: (t, wl, s)}` dict.
   A stateful wrapper comes only if it is needed. CLI wrappers for batch processing
-  are not needed (YAGNI).
+  are not needed (YAGNI). The `flups` CLI automates only the preparation (collecting
+  runs, fluorimeter references), which has no decisions when the data is good.
 - **Store decisions, recompute data.**
   - Decisions (rejections, t0 points, thresholds) are literals in the notebook.
   - Derived data is recomputed, with no cache and no overrides. A workaround is plain
@@ -58,7 +60,7 @@ Their full discussion (findings, alternatives, dates) is in git history, up to c
   - ASCII `.dat` in the TA layout everywhere, intermediates included (`write_dat`,
     `read_dat`).
   - Legacy FLUPS `.txt` files (t x wl) are read with `load_txt`.
-  - `collect-asc` writes `<date>_<run>.dat`.
+  - `flups collect-asc` writes `<date>_<run>.dat` (names: see FLUPS).
   - All readers return wl x t with ascending `t`.
 - **Masks.** Masked arrays during processing, NaN on save. Functions keep masks;
   dropping one silently is a bug. `read_dat` masks NaN, the inverse of `write_dat`.
@@ -143,13 +145,120 @@ an ordinary `edyx` call or plain numpy.
   writes the sampled curve. There is no `T0Curve` class.
 - **Manual offsets** (the FLUPS Raman `t0_offset`, point adjustments) stay as numbers
   in the notebook.
-- **Missing calibration.** No function needs one. In a notebook, the file is a
-  parameter, and `None` skips the step with a warning (pattern in `edyx/README.md`).
-- **Old files** (`_t0corr.npz`, `wl_corr.txt`, `_t0_curve.txt`, `pcf_final.npz`):
+- **Missing calibration.** No function needs one. The templates assume their files
+  exist (well-formed data only); to skip a step, the user edits the notebook, e.g.
+  with the `None` pattern in `edyx/README.md`.
+- **Old files** (`_t0corr.npz`, `wl_corr.txt`, `_t0_curve.txt`, `_FLUPS_t0_corr.txt`,
+  `pcf_final.npz`, the fluorimeter `EmCorr` csv):
   converted once with the snippets in `edyx/README.md`.
 - **Finding:** TA data recorded so far is on the measured axis. `ITOS_peak` rewrote
   only the linear files. At 276 nm the measured axis is 2.3 nm below the calibrated
   one (250709).
+
+## FLUPS
+
+| Task | Input | Output | Where |
+| --- | --- | --- | --- |
+| Collect the runs | Andor `.asc`, one per delay | `<date>_<run>.dat` | `flups collect-asc` |
+| Fluorimeter references | Cary Eclipse csv (replicas) | `<date>_<stem>_corr.dat` | `flups prep-fluo` |
+| t0 | runs on a dye (no PCF) | `<date>_t0_<source>.toml`, axis `wl_u` | `flups_1_t0` |
+| PCF | PCF runs per dye, references | `<date>_PCF_<dye>_mean.dat`, `<date>_pcf_<source>.toml`, axis `wl_u` | `flups_2_pcf` |
+| Processing | measurement runs, t0 and PCF files | `<date>_<root>.dat`, axis `wl_f` | `flups_3_processing` |
+
+- **Preparation is automated, decisions stay in the templates.** From the FLUPS dated
+  folder, `flups collect-asc` then `flups prep-fluo`, with no options when the data is
+  good. `flups help` prints the order of a day and the templates.
+- **Which runs are what** (t0 dye, measurement, PCF trial) is the user's knowledge,
+  written as file lists in the notebook. Runs listed together must stack. The library
+  never infers it.
+- **Preferences differ** (t0 bands, model, one or two passes; smoothing). A template
+  shows one way, in plain code the user edits. The library provides the steps that
+  encode a lab convention, not the fits.
+
+### Axes
+
+- `wl_u` comes from the device: no calibration, and it can change between days. Every
+  FLUPS calibration is on `axis = "wl_u"`, applied by value.
+- `wl_f = fluo_wl(wl_u, gate)` is computed when needed. Only the processed measurement
+  is saved on `wl_f`.
+- Jacobian, analytic: `d wl_f / d wl_u = wl_f**2 / wl_u**2`. A reference per unit `wl_f`
+  times `wl_f**2 / wl_u**2` is per unit `wl_u`; a FLUPS signal (per unit `wl_u`) times
+  `wl_u**2 / wl_f**2` is per unit `wl_f`.
+
+### Files and names
+
+Lab data: FLUPS in `_DATA\FLUPS\YYYY\YYMMDD`, fluorimeter in `_DATA\Fluo\YYYY\YYMMDD`.
+Raw files are never touched.
+
+- **Runs:** `runNN\runNN_sigNNNN.asc`, delay in pixel 0; PCF runs in `PCF\<dye>\runNN`.
+  Collected next to the run folder, named by the path below the dated folder:
+  `260605_run03.dat`, `PCF\PBBO\260605_PCF_PBBO_run01.dat`. The dated folder is the
+  nearest parent whose name starts with 6 digits, used as is (`260605b`). None: named
+  `<parent>_<run>.dat`, with a warning.
+- **References:** `PCF\<date>_<stem>_corr.dat` (`wl, intensity`). The date is the
+  file name's own leading date, else the nearest dated parent folder; none:
+  `<stem>_corr.dat`, with a warning.
+- The templates' outputs go next to the notebook. The notebook pairs each dye with its
+  reference explicitly (a dict), so raw names that break the pattern still work.
+- Headers are a descriptive log: inputs, replicas, calibration files, parameters.
+- Files collected before edyx 0.3 hold the delays as a fake first row: collect the day
+  again with `--force`.
+
+### The `flups` CLI
+
+One typer app, `edyx.scripts.flups:app`; each subcommand lives in its own module. The
+`collect-asc` entry point stays as an alias. With no arguments, each command acts on
+the current day. It prints what it read, wrote and skipped (with the reason). A failing
+file does not stop the others; the exit code is then 1.
+
+- **`collect-asc`:** every `run*` folder (any case) below the arguments, each once. An
+  existing `.dat` is never overwritten; `--force` collects it again.
+- **`prep-fluo`:**
+  - Sources: by default the fluorimeter folder of the same date (`FLUPS\YYYY\YYMMDD`
+    to `Fluo\YYYY\YYMMDD`), or explicit folders and files.
+  - Replicas: those with the grid and settings of the majority are averaged; the
+    others are excluded with a warning naming the reason and `--use`. No majority, or
+    a saturated replica (1000, out of range: the one check that blocks), fails the
+    file; `--use 2,3` chooses (1-based, by position: names repeat).
+  - Intensity calibration: `emcorr_cary-eclipse.toml`, static package data, multiplied
+    by value (`outside="error"`), valid for all settings. `--emcorr FILE`,
+    `--no-emcorr` (warning). One fluorimeter in the lab: no instrument check.
+  - The selection and averaging are the CLI's policy, kept in its module. The reader
+    is a library function: `read_cary_fluo` (replicas, ragged columns, metadata).
+    `read_cary_uv` (absorption, another instrument) is unchanged.
+
+### Templates
+
+Shared first steps, as in TA plus despiking: `stack_traces`, `despike_median` (size and
+threshold literals; the recipe, ~2 x (p95 - p5) of a region without signal, as a
+comment), a `plot_maps` check, `ScanInspector` (or `Linear` for the PCF runs), average.
+Despiking replaces values, it does not mask them. `despike_median_p` (relative
+threshold, slow) stays in `fana`.
+
+- **`flups_1_t0`:** bands are a literal (dye bands, and CC/Raman lines if any). Fits in
+  the template with lmfit: Gaussian + constant for CC/Raman (t0 = center), `conv_exp`
+  + constant for the dye, optional second pass with tau fixed. The band fits omit NaN
+  (rejected points). Points `(wl_u, t0, t0_err)` of all bands, of all dyes if several.
+  Curve `a0 + a1/wl_u**2 + a2/wl_u**4`, i.e. `Polynomial.fit` of degree 2 in
+  `wl_u**-2`, weighted by `1/t0_err**2`. Written with the model, coefficients and
+  points in `[fit]`. No new `edyx` function: each step is a few lines.
+- **`flups_2_pcf`**, two steps, two decisions:
+  1. per dye, `Linear` on the despiked runs (runs as files, frames as repetitions),
+     mean over the runs, saved (`<date>_PCF_<dye>_mean.dat`);
+  2. the reference (the `prep-fluo` output; fallback: the Gerecke lognormals,
+     `ref_spec_wl`, none for PBBO) on `wl_u` with the Jacobian, both normalized; per
+     dye, reference / measurement within **bounds** (decision 1); `pcf_scales`
+     (closed form, the lab's objective solved exactly, first dye fixed to 1; raises if
+     the dyes do not form one overlapping group); spline + Savitzky-Golay
+     **smoothing** (decision 2); written on `wl_u`, NaN outside the valid range.
+- **`flups_3_processing`:** optional pre-t0 subtraction; t0 by value and
+  `shift_trace`; `t0_offset` (Raman) a number; `pcf_correct` (masked outside the PCF);
+  times `wl_u**2 / wl_f**2`; saved on `wl_f`, rows without a PCF cropped.
+- The templates assume well-formed data: the files of a stack share their axes, and
+  the calibration files exist. Other cases are the user's.
+- **Regression:** `edyx/tests/test_regression_240619.py` runs the chain on 240619
+  (legacy `.txt`, t0 curve and PCF of the lab) and reproduces the lab's `sig_U` and
+  `sig_F` to the 6 digits of their files.
 
 ## Templates and examples
 
@@ -160,9 +269,10 @@ an ordinary `edyx` call or plain numpy.
      peaks, the calibration file, spectra saved on the calibrated axis.
   2. `ta_2_processing`: read, calibrate wl, `Overlay`, `ScanInspector`, average,
      pre-t0 subtraction, `T0Picker`, t0 fit and calibration file, shift, save.
-- `pyspan/examples/FLUPS`: `flups_compare`, and the lab notebooks collected for the
-  next round.
-- Data: `edyx/examples/<date>/`, one folder per day as in the lab (`250709`, `240619`):
+- `pyspan/examples/FLUPS`, on 260605: `flups_1_t0`, `flups_2_pcf`, then
+  `flups_3_processing` (see FLUPS).
+- Data: `edyx/examples/<date>/`, one folder per day as in the lab (`250709` TA, `260605`
+  and `240619` FLUPS):
   copies of lab data, unchanged, with the lab's outputs for checks (see each README).
 
 ## Why: what the lab notebooks showed
@@ -185,15 +295,11 @@ an ordinary `edyx` call or plain numpy.
 
 ## Next
 
-- **Release edyx** (0.3.0): `edyx.calib`, `itos_calibration` and `tomli-w` are on
-  `main` only. The pyspan TA templates need them, so pyspan should then require
-  `edyx>=0.3`. Release with `scripts/release.ps1`.
-- **FLUPS templates**, from the collected notebooks. Two of them hardcode a local
-  path; use `data_dir = Path(".")`.
-- **Regression tests in CI.** Nothing checks the full pipelines against the lab's
-  outputs since the edyx examples were removed: `ta_1` checks only the linear spectra.
-  The data is kept for it (`250709/s4044*.dat`, `240619/240619_OMeZs_sig_*.txt`).
-  Either a pytest that runs the same steps, or executing the notebooks.
+- **TA regression test in CI.** FLUPS has one (240619). For TA, `ta_1` checks only the
+  linear spectra; the data for the full chain is kept (`250709/s4044*.dat`). A pytest
+  that runs the same steps, as for FLUPS.
+- **Better FLUPS example data.** 260605 has trial runs and no CC/Raman line; with a
+  better day, the templates' literals (runs, bounds, thresholds) need a pass.
 
 ## Provenance and sidecars (discussed 2026-11-14, not implemented)
 
@@ -234,8 +340,9 @@ Plan, in this order:
      options are arguments. One class per technique, each with a short fixed list of
      decisions, never a generic class with an open dict: otherwise this becomes the
      declarative recipe already rejected.
-3. **FLUPS waits** for its templates. Their decisions (despiking parameters,
-   `pcf_file`, `t0_offset`, gate) will show whether one shape fits both techniques.
+3. **FLUPS:** the templates' decisions are despike size and threshold, rejections,
+   `t_pre`, the t0 file, `t0_offset`, the PCF file and the gate (PCF: runs, bounds,
+   smoothing). They will show whether one shape fits both techniques.
 
 Kept open:
 - a record file per output, written once at save (inputs, calibration names,
@@ -259,6 +366,8 @@ Kept open:
   - the conversion from the FLUPS signal to the equivalent stimulated-emission signal,
     to compare with TA. The Jacobians between `wl_u` and `wl_f` (analytic,
     `d wl_f / d wl_u = wl_f**2 / wl_u**2`) and wavelength to energy are settled.
+- **FLUPS, later:** a pyspan tool for the PCF bounds or smoothing (literals for now);
+  one `flups prep` (collect + references) only if the two are always run together.
 - **Later:**
   - a metadata structure for output names and headers (users document well today);
   - assisted t0 picking (pre-placed points, accepted or moved by the user);

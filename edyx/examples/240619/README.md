@@ -1,6 +1,7 @@
 # Example data: FLUPS, 240619
 
-Copies of lab data, unchanged, so the notebooks run anywhere (`pyspan/examples/FLUPS`).
+Copies of lab data, unchanged, for the regression test of the FLUPS chain
+(`edyx/tests/test_regression_240619.py`).
 
 ZsOMe in hexane. Legacy `.txt` files (delay x pixel).
 

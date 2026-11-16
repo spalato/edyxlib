@@ -87,7 +87,7 @@ import logging; logging.basicConfig(level=logging.INFO)
 ## Examples
 
 `examples/` holds notebooks on the `edyx` example data, one folder per day
-(`../edyx/examples/250709`, `../edyx/examples/240619`). They are
+(`../edyx/examples/250709`, `../edyx/examples/260605`). They are
 templates to start from: copy one into the day folder and set `data_dir = Path(".")`.
 
 - TA (250709), in `examples/TA/`, run in this order:
@@ -96,7 +96,13 @@ templates to start from: copy one into the day folder and set `data_dir = Path("
   2. `ta_2_processing`: scans on the calibrated axis, comparison (`Overlay`), rejection
      (`ScanInspector`), average, t0 points (`T0Picker`), t0 fit and calibration file,
      shift, save.
-- FLUPS (240619): `flups_compare`, comparisons with `Overlay`.
+- FLUPS (260605), in `examples/FLUPS/`, run in this order:
+  1. `flups_1_t0`: t0 runs of one dye, despiked, checked (`Overlay`, `ScanInspector`),
+     averaged; band fits, t0 curve, calibration file.
+  2. `flups_2_pcf`: PCF runs per dye (`Linear`), means saved; with the fluorimeter
+     references (`flups prep-fluo`): validity bounds, scales, smoothing, calibration file.
+  3. `flups_3_processing`: measurement runs, despike, rejection (`ScanInspector`), average,
+     t0 and PCF, saved on the fluorescence wavelength.
 
 ## Known limits
 
