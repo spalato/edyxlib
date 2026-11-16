@@ -256,8 +256,9 @@ Kept open:
     or 2 files;
   - the t0 model;
   - excluded ranges;
-  - Jacobians (`wl_u` to `wl_f`, wavelength to energy, FLUPS to stimulated-emission
-    equivalent; exponents to confirm).
+  - the conversion from the FLUPS signal to the equivalent stimulated-emission signal,
+    to compare with TA. The Jacobians `wl_u` to `wl_f` (analytic, `wl_f**2 / wl_u**2`)
+    and wavelength to energy are settled.
 - **Later:**
   - a metadata structure for output names and headers (users document well today);
   - assisted t0 picking (pre-placed points, accepted or moved by the user);
