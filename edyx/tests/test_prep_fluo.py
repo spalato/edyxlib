@@ -253,15 +253,11 @@ def test_prep_no_emcorr(fluo261006, tmp_path):
     assert "intensity calibration: none" in header(target)
 
 
-def test_prep_emcorr_option_and_serial(fluo261006, tmp_path):
+def test_prep_emcorr_option(fluo261006, tmp_path):
     f = str(fluo261006 / "C153_ac_1mm.csv")
     wl = np.arange(200.0, 900.0)
-    other = tmp_path / "other.toml"
-    write_calibration(other, "emcorr", "wl", wl, np.full_like(wl, 2.0), instrument_serial="OTHER")
-    assert run(f, "--outdir", str(tmp_path / "a"), "--emcorr", str(other)).exit_code == 1
     same = tmp_path / "same.toml"
-    write_calibration(same, "emcorr", "wl", wl, np.full_like(wl, 2.0),
-                      instrument_serial="MY2441CG03")
+    write_calibration(same, "emcorr", "wl", wl, np.full_like(wl, 2.0))
     result = run(f, "--outdir", str(tmp_path / "b"), "--emcorr", str(same))
     assert result.exit_code == 0, result.output
     reps = read_cary_fluo(f)

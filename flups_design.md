@@ -258,9 +258,8 @@ Design:
 - **Intensity calibration.** Static, package data in `edyx`
   (`emcorr_cary-eclipse.toml`, converted once from `EmCorr_combined_220_800.csv`).
   Multiplied, by value (`interp_calibration`, `outside="error"`). Valid for all
-  settings. The file fails if the instrument serial number of the replicas differs
-  from the calibration's (`MY2441CG03`). `--emcorr FILE` overrides; `--no-emcorr` skips
-  with a warning.
+  settings. `--emcorr FILE` overrides; `--no-emcorr` skips with a warning. (One
+  fluorimeter in the lab: no instrument check.)
 - **Output.** `PCF\<date>_<stem>_corr.dat`, two columns `wl, intensity`. The header names
   the source file, the replicas used and excluded with the reasons, the calibration
   file and the instrument settings.

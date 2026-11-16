@@ -32,7 +32,6 @@ SETTINGS = (
     "Stop (nm)",
     "Data interval (nm)",
 )
-SERIAL = "Instrument Serial Number"
 EPILOG = (
     "usage: `prep-fluo` (the Fluo folder of the current FLUPS day), "
     "`prep-fluo \\\\server\\_DATA\\Fluo\\2026\\261005` (a folder), `prep-fluo file.csv --use 2,3`"
@@ -247,14 +246,6 @@ def prep_file(csv: Path, output: Path, cal, emcorr_name: str, use) -> None:
     wl = reps[used[0]].wl
     intensity = np.mean([reps[i].intensity for i in used], axis=0)
     if cal is not None:
-        serial = cal.get("instrument_serial")
-        if serial is not None:
-            found = sorted({str(reps[i].meta.get(SERIAL)) for i in used})
-            if found != [serial]:
-                raise ValueError(
-                    f"instrument serial number of the replicas ({', '.join(found)}) "
-                    f"differs from the calibration's ({serial})"
-                )
         intensity = intensity * interp_calibration(cal, wl, outside="error")
     header = "\n".join(
         [

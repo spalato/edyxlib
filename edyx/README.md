@@ -105,7 +105,7 @@ write_calibration("240619_pcf_dyes.toml", "pcf", "wl_u", d["wl"], d["pcf"],
 wl, factor = np.loadtxt("EmCorr_combined_220_800.csv", delimiter=",", skiprows=1).T
 write_calibration("emcorr_cary-eclipse.toml", "emcorr", "wl", wl, factor,
                   units=["nm", ""], source="EmCorr_combined_220_800.csv",
-                  instrument="Cary Eclipse", instrument_serial="MY2441CG03",
+                  instrument="Cary Eclipse",
                   notes="Fluorimeter emission intensity correction. Multiply the measured "
                         "spectrum. Valid for all settings.")
 ```

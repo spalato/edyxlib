@@ -6,7 +6,6 @@ units = [
 ]
 source = "EmCorr_combined_220_800.csv"
 instrument = "Cary Eclipse"
-instrument_serial = "MY2441CG03"
 notes = "Fluorimeter emission intensity correction. Multiply the measured spectrum. Valid for all settings."
 x = [
     220.0,
