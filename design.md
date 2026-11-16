@@ -73,7 +73,7 @@ Their full discussion (findings, alternatives, dates) is in git history, up to c
 | --- | --- |
 | `io` | `read_dat`, `write_dat`, `stack_traces` (checks the axes), `load_txt`, `load_npz`, `load_asc_series`, `read_ab_dat`/`read_ab_stack`, axis constants |
 | `tana` | shared by TA and FLUPS: `shift_trace(t, s, t0, edges="clip"\|"nan")`, `shift_kin`, `crop`, `subtract_pre_t0`, `avg_scans`, `avg_spectra`, `band_integral`, `band_average`; ITOS: `load_itos_spectrum`, `itos_calibration` |
-| `fana` | FLUPS: `despike_median` (and variants), `pcf_correct`, `fluo_wl(wl_u, gate=1340)`, reference spectra |
+| `fana` | FLUPS: `despike_median`, `despike_median_p`, `pcf_correct(wl_u, s, cal)`, `pcf_scales`, `fluo_wl(wl_u, gate=1340)`, reference spectra |
 | `calib` | `write_calibration`, `read_calibration`, `interp_calibration` |
 | `plot` | `plot_maps` (N maps side by side, defaults by signal kind), `plot_flups` |
 | `units`, `utils` | `nm2ev`, ...; `between`, `argnear`, ... |
