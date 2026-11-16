@@ -219,6 +219,7 @@ __marimo__/
 
 # Raw data files for testing things 
 *.asc
+edyx/scratch/fluo_*/*
 
 # distribution, site index
 site/ 
