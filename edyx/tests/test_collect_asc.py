@@ -1,4 +1,5 @@
 import os
+import re
 
 import numpy as np
 import pytest
@@ -150,7 +151,8 @@ def test_collect_overlapping_arguments_once(day, caplog):
 def test_flups_help_texts():
     result = CliRunner().invoke(flups_app, ["collect-asc", "--help"], terminal_width=200)
     assert result.exit_code == 0
-    assert "--force" in result.output and "paths" in result.output
+    text = re.sub(r"\x1b\[[0-9;]*m", "", result.output)  # rich colors on CI (GITHUB_ACTIONS)
+    assert "--force" in text and "paths" in text
     result = CliRunner().invoke(flups_app, ["help"])
     assert result.exit_code == 0
     assert "collect-asc" in result.output

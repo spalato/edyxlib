@@ -68,9 +68,9 @@ def test_read_cary_fluo_errors(tmp_path):
     f.write_text("wavelength,pcf\n220.0,1.0\n")
     with pytest.raises(ValueError, match="not a Cary"):
         read_cary_fluo(f)
-    text = (D261006 / "C153_ac_1mm.csv").read_bytes().decode()
+    text = (D261006 / "C153_ac_1mm.csv").read_bytes().decode().replace("\r\n", "\n")  # CRLF or LF
     i = text.rindex("Collection Time")
-    f.write_bytes(text[: text.rindex("\r\n\r\n", 0, i)].encode())  # last metadata block removed
+    f.write_bytes(text[: text.rindex("\n\n", 0, i)].encode())  # last metadata block removed
     with pytest.raises(ValueError, match="metadata block"):
         read_cary_fluo(f)
 
