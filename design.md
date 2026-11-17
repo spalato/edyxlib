@@ -75,7 +75,7 @@ commit `7153608`). Package structure and install profiles: [uv_monorepo.md](uv_m
 | --- | --- |
 | `io` | `read_dat`, `write_dat`, `stack_traces` (checks the axes), `load_txt`, `load_npz`, `load_asc_series`, `read_ab_dat`/`read_ab_stack`, axis constants |
 | `tana` | shared by TA and FLUPS: `shift_trace(t, s, t0, edges="clip"\|"nan")`, `shift_kin`, `crop`, `subtract_pre_t0`, `avg_scans`, `avg_spectra`, `band_integral`, `band_average`; ITOS: `load_itos_spectrum`, `itos_calibration` |
-| `fana` | FLUPS: `despike_median`, `despike_median_p`, `pcf_correct(wl_u, s, cal)`, `pcf_scales`, `fluo_wl(wl_u, gate=1340)`, reference spectra |
+| `fana` | FLUPS: `despike_median`, `despike_median_p`, `pcf_correct(wl_u, s, cal)`, `pcf_scales`, `fluo_wl(wl_u, gate=1340)` and its inverse `upconv_wl(wl_f, gate=1340)`, `jacobian(wl_u, gate=1340)`, `upconvert(wl_f, sig, gate=1340)` and `downconvert(wl_u, sig, gate=1340)`, reference spectra |
 | `calib` | `write_calibration`, `read_calibration`, `interp_calibration` |
 | `plot` | `plot_maps` (N maps side by side, defaults by signal kind), `plot_flups` |
 | `units`, `utils` | `nm2ev`, ...; `between`, `argnear`, ... |
@@ -92,7 +92,7 @@ TA and FLUPS share one core, with the technique steps around it:
 A tool helps the user make a decision and returns it as plain data. The next step is
 an ordinary `edyx` call or plain numpy.
 
-| Tool | For | "Done" prints | Result |
+| Tool | For | `print_decisions()` prints | Result |
 | --- | --- | --- | --- |
 | `Overlay` | comparing datasets (each on its own axes): spectra at a delay, or kinetics at a wavelength | nothing | nothing |
 | `ScanInspector` | rejecting scan data: delay ranges in a file, whole files, wavelength rows; optional RMSD threshold | `rejections`, `threshold` | `masked()`, `mask` |
@@ -108,8 +108,11 @@ an ordinary `edyx` call or plain numpy.
   - The tool copies its input, so clicks never change the literal; nothing else
     changes it either (no globals mutated by widgets).
   - "Run all", with no clicks, gives the result recorded in the decisions cell.
-  - After clicking, the result follows the clicks, not the record: paste "Done" and
-    re-run before saving.
+  - After clicking, the result follows the clicks, not the record: paste the
+    printout and re-run before saving.
+  - **No "Done" button** (2026-11-17). A button that only prints is forgotten. The
+    cell after the tool, which uses its result, calls `print_decisions()`, so the
+    printout always matches what was used.
 - **Rejection literal.** A list of `(file, wl, t)`. Each entry is `None` (all), an
   index, or a `(start, stop)` range with stop excluded. Plain functions in
   `pyspan.decisions`: `rejection_mask`, `rmsd_vs_median`, `above_threshold`,
@@ -183,7 +186,11 @@ an ordinary `edyx` call or plain numpy.
   is saved on `wl_f`.
 - Jacobian, analytic: `d wl_f / d wl_u = wl_f**2 / wl_u**2`. A reference per unit `wl_f`
   times `wl_f**2 / wl_u**2` is per unit `wl_u`; a FLUPS signal (per unit `wl_u`) times
-  `wl_u**2 / wl_f**2` is per unit `wl_f`.
+  `wl_u**2 / wl_f**2` is per unit `wl_f`. `jacobian(wl_u, gate)` gives the factor;
+  `upconvert(wl_f, sig, gate)` and `downconvert(wl_u, sig, gate)` return the other axis
+  and the signal times or divided by the Jacobian, for a `(W,)` spectrum, a `(W, T)`
+  trace or a `(..., W, T)` stack, masks kept. Neither interpolates: that step is the
+  user's.
 
 ### Files and names
 
@@ -312,7 +319,7 @@ Settled:
 
 Plan, in this order:
 1. **`provenance(**items)` in `edyx.io`**, plus a counterpart that reads it back.
-   - One `key = literal` line per item, in the format "Done" prints (`format_literal`);
+   - One `key = literal` line per item, in the format `print_decisions()` prints (`format_literal`);
      file paths become names.
    - Read back with `ast.literal_eval`, which runs no code.
    - The user passes what they used in one call:

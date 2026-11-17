@@ -125,7 +125,7 @@ def test_uc5_round_trip(capsys):
     insp.select(t[10], t[12])
     insp.reject_in_file()
     insp.set_threshold(float(np.median(r)))
-    insp.done()
+    insp.print_decisions()
     ns = {"np": np}
     exec(capsys.readouterr().out, ns)
     back = (rejection_mask(shape, ns["rejections"])
@@ -144,6 +144,7 @@ def test_show():
     assert insp.rejections == [(0, None, None)]
     buttons["Undo"].click()
     assert insp.rejections == []
+    assert "Done" not in buttons
 
 
 def test_logging(caplog):

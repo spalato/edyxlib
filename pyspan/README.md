@@ -18,7 +18,7 @@ For development, from `pyspan/`: `uv sync`, `uv run pytest`, `uv run jupyter lab
 
 ## Tools
 
-| Tool | For | "Done" prints |
+| Tool | For | `print_decisions()` prints |
 | --- | --- | --- |
 | `Overlay` | comparing datasets: spectra at a delay, or kinetics at a wavelength | nothing |
 | `ScanInspector` | rejecting scan data (TA, FLUPS stacks), optional RMSD threshold | `rejections`, `threshold` |
@@ -26,7 +26,7 @@ For development, from `pyspan/`: `uv sync`, `uv run pytest`, `uv run jupyter lab
 | `Linear` | linear spectra: browse repetitions, RMSD threshold, mean spectra | `threshold` |
 
 `Linear` applies its thresholds (default: mean + 3.5 std of the RMSD) to all files
-at once; set a large value to reject nothing. Pass the "Done" output back with
+at once; set a large value to reject nothing. Pass the printed `threshold` back with
 `Linear.from_files(fnames, threshold=threshold)`.
 
 Each tool is a small class: action methods (`set_value`, `reject_file`,
@@ -55,23 +55,29 @@ Overlay({"before": (t, wl, s0), "after": (t2, wl2, s1)}, mode="kinetics").show()
 
 ## Re-running without clicking
 
-Decisions live in the notebook. Each tool prints its decisions as a Python literal
-on "Done". Paste it into the cell before the tool, and pass it back in:
+Decisions live in the notebook. `print_decisions()` prints a tool's decisions as a
+Python literal. Call it in the cell after the tool, the one that uses the result, so
+the printout always matches what was used. Paste it into the cell before the tool,
+and pass it back in:
 
 ```python
-# pasted from "Done"
+# pasted from print_decisions()
 rejections = [(4, None, (221, 222)), (None, None, (253, None))]
 threshold = None
+```
 
+```python
 insp = ScanInspector(t, wl, stack, rejections=rejections)
 insp.show()
 ```
 
-The data step uses the literal, not the widget, so "Run all" gives the same result:
-
 ```python
-data = np.ma.masked_array(stack, mask=rejection_mask(stack.shape, rejections))
+insp.print_decisions()
+data = insp.masked()
 ```
+
+With no clicks, "Run all" gives the result recorded in the decisions cell. After
+clicking, the result follows the clicks: paste the printout and re-run before saving.
 
 A rejection is `(file, wl, t)`. Each entry is `None` (all), an index, or a
 `(start, stop)` range, stop excluded, as in a slice. Indices refer to the axes the

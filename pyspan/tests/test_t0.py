@@ -108,7 +108,7 @@ def test_acceptance_uc3(capsys):
     d = np.load(DATA / "s2027_t0corr.npz")
     tt, ww, ss = edyx.io.read_dat(DATA / "s40.dat")
     p = T0Picker(tt, ww, ss, points=d["t0_meas"])
-    p.done()
+    p.print_decisions()
     ns = {"np": np}
     exec(capsys.readouterr().out, ns)
     assert np.array_equal(ns["t0_points"], d["t0_meas"])
@@ -138,7 +138,7 @@ def test_show_smoke():
     p.add_point(0.1)
     buttons["Delete point"].click()
     assert p.points.shape == (0, 2)
-    buttons["Done"].click()
+    assert "Done" not in buttons
 
 
 def test_tlim():

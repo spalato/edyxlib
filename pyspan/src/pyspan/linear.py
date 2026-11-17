@@ -48,7 +48,7 @@ class Linear:
     fnames: list, len(fnames)==L
         List of filenames
     threshold : float or (L,) array, optional
-        RMSD thresholds, e.g. pasted from the output of "Done". Default: mean +
+        RMSD thresholds, e.g. pasted from the output of `print_decisions`. Default: mean +
         3.5 std of the RMSD of each file. Applied at once to all files; a large
         value rejects nothing.
 
@@ -70,8 +70,6 @@ class Linear:
     threshold = field(factory=lambda: np.empty((0,)))
     thresh_line = field(init=False, repr=False)
     ascale_btn = field(init=False, repr=False)
-    done_btn = field(init=False, repr=False)
-    done_out = field(init=False, repr=False)
     ctrl_lyt = field(init=False, repr=False)
     main_lyt = field(init=False, repr=False)
 
@@ -124,12 +122,10 @@ class Linear:
         )
         #   Rescale button
         self.ascale_btn = widgets.Button(description="Rescale", icon="arrows-alt-v")
-        self.done_btn = widgets.Button(description="Done")
-        self.done_out = widgets.Output()
 
         # Setup layout
-        self.ctrl_lyt = widgets.HBox([self.file_select, self.idx, self.thresh_widget, self.ascale_btn, self.done_btn])
-        self.main_lyt = widgets.VBox([self.ctrl_lyt, self.fig.canvas, self.done_out])
+        self.ctrl_lyt = widgets.HBox([self.file_select, self.idx, self.thresh_widget, self.ascale_btn])
+        self.main_lyt = widgets.VBox([self.ctrl_lyt, self.fig.canvas])
 
         # Generate curves
         self.curves = self.ax_spec.plot(self.wl, self.od.data[self.file_select.index, :, self.idx.value])
@@ -147,7 +143,6 @@ class Linear:
         self.thresh_line = self.ax_rmsd.axhline(self.thresh_widget.value, color="r", lw=0.8, ls="--")
         # Connect widgets to callbacks
         self.ascale_btn.on_click(self.autoscale)
-        self.done_btn.on_click(self._on_done)
         self.file_select.observe(self._update, names="value")
         self.idx.observe(self._update, names="value")
         self.thresh_widget.observe(self.on_thresh_change, names="value")
@@ -206,13 +201,9 @@ class Linear:
         self.thresh_line.set_ydata([thresh, thresh])
         self._update(redraw_all=True)
 
-    def done(self):
-        """Print the thresholds as code to paste in a cell (`Linear(..., threshold=...)`)."""
+    def print_decisions(self):
+        """Print the thresholds as code to paste in the decisions cell (`Linear(..., threshold=...)`)."""
         print(format_literal("threshold", self.threshold))
-
-    def _on_done(self, *_):
-        with self.done_out:
-            self.done()
 
     def autoscale(self, *args):
         dat = self.od[self.file_select.index]
@@ -256,7 +247,7 @@ class Linear:
         fnames : iterable
             List of files to read.
         **kwargs
-            Passed to `Linear`, e.g. `threshold=` pasted from "Done".
+            Passed to `Linear`, e.g. `threshold=` pasted from `print_decisions`.
 
         Returns
         -------

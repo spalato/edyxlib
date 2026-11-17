@@ -166,8 +166,8 @@ class ScanInspector:
             self.overlay.set_data(label, masked[i])
         logger.info(message)
 
-    def done(self):
-        """Print the decisions as code to paste in a cell."""
+    def print_decisions(self):
+        """Print the decisions as code to paste in the decisions cell."""
         print(format_literal("rejections", self.rejections))
         if self.rmsd is not None:
             print(format_literal("threshold", self.threshold))
@@ -196,7 +196,6 @@ class ScanInspector:
             ("Reject file", self.reject_file),
             ("Reject wl row", self.reject_wl_row),
             ("Undo", self.undo),
-            ("Done", self.done),
         ]
         buttons = []
         for text, action in actions:

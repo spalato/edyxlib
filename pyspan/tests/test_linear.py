@@ -55,15 +55,15 @@ def test_threshold_given_is_applied():
     np.testing.assert_array_equal(s.threshold, [7.0, 7.0])
 
 
-def test_done_round_trip(lin, capsys):
+def test_print_decisions_round_trip(lin, capsys):
     lin.plot()
     lin.thresh_widget.value = 5.0
-    lin.done()
+    lin.print_decisions()
     ns = {"np": np}
     exec(capsys.readouterr().out, ns)
     again = Linear(wl=lin.wl, od=lin.od.data, fnames=lin.fnames, threshold=ns["threshold"])
     np.testing.assert_array_equal(again.od.mask, lin.od.mask)
-    lin.done_btn.click()
+    assert "Done" not in [w.description for w in lin.ctrl_lyt.children]
     plt.close("all")
 
 
@@ -80,7 +80,7 @@ def test_from_files_forwards_threshold(monkeypatch):
 
 def test_default_threshold_applied_at_once(capsys):
     # The default threshold applies to all files at once, visited or not, so the
-    # "Done" literal reproduces the session.
+    # `print_decisions` literal reproduces the session.
     rng = np.random.default_rng(0)
     od = rng.normal(size=(L, M, N))
     od[:, :, 7] += 5  # one outlier repetition per file
@@ -92,7 +92,7 @@ def test_default_threshold_applied_at_once(capsys):
     lin.file_select.value = "b"
     lin.file_select.value = "a"
     np.testing.assert_array_equal(lin.od.mask, expected)
-    lin.done()
+    lin.print_decisions()
     ns = {"np": np}
     exec(capsys.readouterr().out, ns)
     again = Linear(wl=lin.wl, od=od, fnames=["a", "b"], threshold=ns["threshold"])
