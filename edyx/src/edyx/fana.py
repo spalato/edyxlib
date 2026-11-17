@@ -185,6 +185,111 @@ def fluo_wl(wl_u, gate=1340):
     return 1 / (1 / np.asarray(wl_u, dtype=float) - 1 / gate)
 
 
+def upconv_wl(wl_f, gate=1340):
+    """Convert the fluorescence wavelength to the detected (upconverted) wavelength.
+
+    Inverse of `fluo_wl`.
+
+    Parameters
+    ----------
+    wl_f : array-like
+        Fluorescence wavelength axis, in nm.
+    gate : float
+        Gate wavelength, in nm (1340 nm so far).
+
+    Returns
+    -------
+    ndarray
+        Detected wavelength axis, in nm.
+    """
+    return 1 / (1 / np.asarray(wl_f, dtype=float) + 1 / gate)
+
+
+def jacobian_fu(wl_u, gate=1340):
+    """Jacobian of the upconversion, ``d wl_f / d wl_u = wl_f**2 / wl_u**2``.
+
+    When converting signal from `wl_f` to `wl_u`, multiply by this function. 
+    When converting signal from `wl_u` to `wl_f`, divide instead.
+
+    Parameters
+    ----------
+    wl_u : array-like
+        Detected wavelength axis, in nm.
+    gate : float
+        Gate wavelength, in nm (1340 nm so far).
+
+    Returns
+    -------
+    ndarray
+        Jacobian on `wl_u`.
+    """
+    wl_u = np.asarray(wl_u, dtype=float)
+    return fluo_wl(wl_u, gate)**2 / wl_u**2
+
+
+def _along_wl(sig, factor):
+    """Multiply along the wavelength axis: (W,) spectrum, (W, T) trace, (..., W, T) stack."""
+    return sig * (factor if np.ndim(sig) == 1 else factor[:, np.newaxis])
+
+
+def upconvert(wl_f, sig, gate=1340):
+    """Convert a signal from the fluorescence to the detected (upconverted) wavelength.
+
+    Computes the axis `wl_u` and multiplies by the Jacobian. Does not interpolate.
+
+    Parameters
+    ----------
+    wl_f : (W,) array-like
+        Fluorescence wavelength axis of `sig`, in nm.
+    sig : (W,), (W, T) or (..., W, T) array-like or masked array
+        Spectrum, trace or stack, per unit `wl_f`. A mask is kept.
+    gate : float
+        Gate wavelength, in nm (1340 nm so far).
+
+    Returns
+    -------
+    wl_u : (W,) ndarray
+        Detected wavelength axis, in nm.
+    sig_u : same shape as `sig`
+        Signal per unit `wl_u`.
+
+    See also
+    --------
+    `downconvert`: the inverse.
+    """
+    wl_u = upconv_wl(wl_f, gate)
+    return wl_u, _along_wl(sig, jacobian_fu(wl_u, gate))
+
+
+def downconvert(wl_u, sig, gate=1340):
+    """Convert a signal from the detected (upconverted) to the fluorescence wavelength.
+
+    Computes the axis `wl_f` and divides by the Jacobian. Does not interpolate.
+
+    Parameters
+    ----------
+    wl_u : (W,) array-like
+        Detected wavelength axis of `sig`, in nm.
+    sig : (W,), (W, T) or (..., W, T) array-like or masked array
+        Spectrum, trace or stack, per unit `wl_u`. A mask is kept.
+    gate : float
+        Gate wavelength, in nm (1340 nm so far).
+
+    Returns
+    -------
+    wl_f : (W,) ndarray
+        Fluorescence wavelength axis, in nm.
+    sig_f : same shape as `sig`
+        Signal per unit `wl_f`.
+
+    See also
+    --------
+    `upconvert`: the inverse.
+    """
+    wl_u = np.asarray(wl_u, dtype=float)
+    return fluo_wl(wl_u, gate), _along_wl(sig, 1 / jacobian_fu(wl_u, gate))
+
+
 def pcf_correct(wl_u, s, cal, outside="nan"):
     """Multiply by the photometric correction function (PCF), interpolated on `wl_u`.
 
