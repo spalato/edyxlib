@@ -3,7 +3,8 @@ import edyx.fana
 import edyx.tana
 import pytest
 from scipy.optimize import minimize
-from edyx.fana import fluo_wl, pcf_correct, pcf_scales
+from edyx.fana import (fluo_wl, upconv_wl, jacobian, upconvert, downconvert,
+                       pcf_correct, pcf_scales)
 
 
 def test_shift_trace_is_shared():
@@ -16,6 +17,40 @@ def test_fluo_wl():
     np.testing.assert_allclose(fluo_wl(wl), 1 / (1 / wl - 1 / 1340))
     np.testing.assert_allclose(fluo_wl(wl, gate=1300), 1 / (1 / wl - 1 / 1300))
     np.testing.assert_allclose(fluo_wl([500, 600]), fluo_wl(np.array([500.0, 600.0])))
+
+
+def test_upconv_wl_inverts_fluo_wl():
+    wl_u = np.linspace(300, 450, 7)
+    np.testing.assert_allclose(upconv_wl(fluo_wl(wl_u, 1300), 1300), wl_u)
+    np.testing.assert_allclose(fluo_wl(upconv_wl([500, 600])), [500, 600])
+
+
+def test_jacobian_is_derivative():
+    wl_u = np.linspace(300, 450, 7)
+    h = 1e-4
+    num = (fluo_wl(wl_u + h, 1300) - fluo_wl(wl_u - h, 1300)) / (2 * h)
+    np.testing.assert_allclose(jacobian(wl_u, 1300), num, rtol=1e-6)
+
+
+@pytest.mark.parametrize("shape", [(7,), (7, 4), (3, 7, 4)])
+def test_upconvert_downconvert(shape):
+    wl_f = np.linspace(500, 700, 7)
+    sig = np.random.default_rng(0).normal(size=shape)
+    wl_u, sig_u = upconvert(wl_f, sig, 1300)
+    np.testing.assert_allclose(wl_u, upconv_wl(wl_f, 1300))
+    j = jacobian(wl_u, 1300)
+    np.testing.assert_allclose(sig_u, sig * (j if len(shape) == 1 else j[:, np.newaxis]))
+    wl_back, sig_back = downconvert(wl_u, sig_u, 1300)
+    np.testing.assert_allclose(wl_back, wl_f)
+    np.testing.assert_allclose(sig_back, sig)
+
+
+def test_downconvert_keeps_mask():
+    wl_u = np.linspace(300, 450, 5)
+    sig = np.ma.masked_array(np.ones((5, 3)), mask=np.zeros((5, 3), bool))
+    sig.mask[1, 2] = True
+    _, sig_f = downconvert(wl_u, sig)
+    np.testing.assert_array_equal(np.ma.getmaskarray(sig_f), sig.mask)
 
 
 def _pcf_setup():

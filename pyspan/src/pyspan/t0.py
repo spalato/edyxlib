@@ -141,8 +141,8 @@ class T0Picker:
             logger.info("deleted point %r", self._points.pop(k))
         self._refresh()
 
-    def done(self):
-        """Print the points as code to paste in a cell."""
+    def print_decisions(self):
+        """Print the points as code to paste in the decisions cell."""
         print(format_literal("t0_points", self.points))
 
     def _update_points(self):
@@ -186,7 +186,7 @@ class T0Picker:
         self._slider.observe(lambda ch: self.set_row(ch["new"]), names="value")
 
         actions = [("Prev", self.prev), ("Next", self.next),
-                   ("Delete point", self.delete_point), ("Done", self.done)]
+                   ("Delete point", self.delete_point)]
         buttons = []
         for text, action in actions:
             button = widgets.Button(description=text)

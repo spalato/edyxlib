@@ -75,7 +75,7 @@ plt.plot(cal["x"], cal["y"])
 
 ### Old files
 
-Convert once, explicitly, then use the toml file. The files below are in
+Convert once, explicitly, then use the toml file. Most files below are in
 `examples/250709/` and `examples/240619/`.
 
 ```python
@@ -95,6 +95,17 @@ write_calibration("250709_wl_itos.toml", "wl", "wl_raw", wl_raw, wl_cal,
 wl_u, t0 = np.loadtxt("240619_PBBO_t0_curve.txt").T
 write_calibration("240619_t0_PBBO.toml", "t0", "wl_u", wl_u, t0,
                   units=["nm", "ps"], date=datetime.date(2024, 6, 19), source="PBBO")
+
+# FLUPS t0 coefficients, <date>_FLUPS_t0_corr.txt (np.polyfit in eV, highest order first):
+# sampled on the wl_u axis of that day's runs
+from edyx.io import read_dat
+from edyx.units import nm2ev
+coef = np.loadtxt("260605_FLUPS_t0_corr.txt")
+wl_u = read_dat("260605_run01.dat")[1]
+write_calibration("260605_t0_PBBO.toml", "t0", "wl_u", wl_u, np.polyval(coef, nm2ev(wl_u)),
+                  units=["nm", "ps"], date=datetime.date(2026, 6, 5), source="PBBO",
+                  fit={"model": "polynomial in eV, high order first (np.polyval)",
+                       "coef": coef})
 
 # FLUPS PCF, pcf_final.npz (NaN outside the valid range: kept)
 d = np.load("240619_pcf_final.npz")

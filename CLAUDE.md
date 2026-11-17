@@ -6,13 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Lab code (edyx@HU) being reorganized from scattered conda-based code into a uv-managed monorepo.
 
-- `edyx/` (0.2.0 released; `main` has unreleased work such as `edyx.calib`): I/O, TA (`tana`) and FLUPS (`fana`) processing, calibration files, matplotlib plots (`edyx.plot`), CLI scripts (`spectra-fit`, `collect-asc`).
-- `pyspan/` (0.3.3): interactive decision tools (`Overlay`, `ScanInspector`, `T0Picker`, `Linear`), and the TA templates in `pyspan/examples/TA/`.
+- `edyx/` (0.3.1): I/O, TA (`tana`) and FLUPS (`fana`) processing, calibration files (`edyx.calib`), matplotlib plots (`edyx.plot`), CLI scripts (`spectra-fit`; `flups` with `collect-asc`, `prep-fluo`, `help`; `collect-asc` alias).
+- `pyspan/` (0.4.0, requires `edyx>=0.3.1`): interactive decision tools (`Overlay`, `ScanInspector`, `T0Picker`, `Linear`), and the templates in `pyspan/examples/TA/` and `pyspan/examples/FLUPS/`.
 - `andor_c/`: legacy `.pgm` files. Instrument and experiment packages are still planned.
-- Example data: `edyx/examples/<date>/`, one folder per day as in the lab (`250709` TA, `240619` FLUPS): copies of lab data, unchanged. The notebooks are in `pyspan/examples/`.
+- Example data: `edyx/examples/<date>/`, one folder per day as in the lab (`250709` TA, `260605` FLUPS templates, `240619` FLUPS regression test): copies of lab data, unchanged. The notebooks are in `pyspan/examples/`.
 
 Read before structural work:
-- [design.md](design.md): principles, conventions (axes, argument order, masks, files), the edyx core, pyspan tools, calibration files, templates, open points. The reference for the TA, pyspan and calibration design.
+- [design.md](design.md): principles, conventions (axes, argument order, masks, files), the edyx core, pyspan tools, calibration files, templates, open points. The reference for the TA, FLUPS, pyspan and calibration design.
 - [uv_monorepo.md](uv_monorepo.md): goals, user tiers, package structure, dependency direction, promotion policy, install profiles.
 - [layout.txt](layout.txt): planned directory tree (draft, includes open questions such as `pigui??`).
 
