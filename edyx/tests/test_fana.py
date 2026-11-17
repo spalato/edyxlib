@@ -3,7 +3,7 @@ import edyx.fana
 import edyx.tana
 import pytest
 from scipy.optimize import minimize
-from edyx.fana import (fluo_wl, upconv_wl, jacobian, upconvert, downconvert,
+from edyx.fana import (fluo_wl, upconv_wl, jacobian_fu, upconvert, downconvert,
                        pcf_correct, pcf_scales)
 
 
@@ -29,7 +29,7 @@ def test_jacobian_is_derivative():
     wl_u = np.linspace(300, 450, 7)
     h = 1e-4
     num = (fluo_wl(wl_u + h, 1300) - fluo_wl(wl_u - h, 1300)) / (2 * h)
-    np.testing.assert_allclose(jacobian(wl_u, 1300), num, rtol=1e-6)
+    np.testing.assert_allclose(jacobian_fu(wl_u, 1300), num, rtol=1e-6)
 
 
 @pytest.mark.parametrize("shape", [(7,), (7, 4), (3, 7, 4)])
@@ -38,7 +38,7 @@ def test_upconvert_downconvert(shape):
     sig = np.random.default_rng(0).normal(size=shape)
     wl_u, sig_u = upconvert(wl_f, sig, 1300)
     np.testing.assert_allclose(wl_u, upconv_wl(wl_f, 1300))
-    j = jacobian(wl_u, 1300)
+    j = jacobian_fu(wl_u, 1300)
     np.testing.assert_allclose(sig_u, sig * (j if len(shape) == 1 else j[:, np.newaxis]))
     wl_back, sig_back = downconvert(wl_u, sig_u, 1300)
     np.testing.assert_allclose(wl_back, wl_f)
