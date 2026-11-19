@@ -48,7 +48,7 @@ edyxlib/
 │   │       └── ...
 │   └── tests/
 │
-├── pistage/                    # shared instrument (example)
+├── pistage/                    # shared instrument: PI stage serial driver, mock
 │   ├── pyproject.toml          # depends on edyx (+ shared-instrument if needed)
 |   ├── uv.lock                 # per package lockfile
 │   ├── src/
@@ -56,6 +56,6 @@ edyxlib/
 │   └── tests/
 │
 ├── some_future_flups_GUI/      # eventually, FLUPS GUI. similar to theseus
-├── pigui??/                    # minimal GUI for PI stage.
+├── pigui/                      # minimal GUI for PI stage (depends on pistage)
 
 └── docs/                       # or a pointer into the lab wiki instead of duplicating
