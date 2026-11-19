@@ -32,8 +32,17 @@ jobs:
           actual="$(uv version --short)"
           [ "$actual" = "$VERSION" ] || { echo "Tag $VERSION != pyproject $actual"; exit 1; }
 
+      # PySide6 needs a few system libraries that ubuntu runners lack.
+      - name: Qt system libraries
+        if: env.PKG == 'pigui'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+
       - name: Test
         working-directory: ${{ env.PKG }}
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: uv run pytest
 
       - name: Build
