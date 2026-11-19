@@ -14,7 +14,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "pistage",
+    "pistage>=1.0.0",
     "PySide6",
     "qtlets",
     "attrs",
