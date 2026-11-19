@@ -96,6 +96,12 @@ def launch_pigui(
     return ret
 
 
+def _show_config_path(value: bool) -> None:
+    if value:
+        typer.echo(USER_CFG)
+        raise typer.Exit()
+
+
 @app.command(help="Simple UI for PIStage.", epilog=" Parameters passed to the command line will take precedence. Config file will be saved at successful exit.")
 def main(
     config_file: Optional[str] = typer.Option(
@@ -110,6 +116,13 @@ def main(
     scandir: Optional[int] = typer.Option(None, help="Scan direction for delay conversion."),
     time_zero: Optional[int] = typer.Option(None, help="Reference time-zero position."),
     verbose: bool = typer.Option(False, "--verbose", help="Enable debug logging (default: info)."),
+    config_path: bool = typer.Option(
+        False,
+        "--config-path",
+        callback=_show_config_path,
+        is_eager=True,
+        help="Print the default user config file path and exit. E.g. `code $(pigui --config-path)`.",
+    ),
 ) -> None:
     raise typer.Exit(code=launch_pigui(config_file, port, axis, autoconnect, scandir, time_zero, verbose))
 

@@ -8,3 +8,5 @@ pigui --port Mock
 ```
 
 Settings are saved at exit to the per-user config folder (on Windows `%LOCALAPPDATA%\edyx\pigui.toml`, shared root with the other edyx packages), created on demand. The first run starts from the defaults packaged with `pigui`. Use `-c/--config-file` to use another file.
+
+`pigui --config-path` prints the settings file path and exits, e.g. `code $(pigui --config-path)`.
