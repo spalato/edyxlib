@@ -1,4 +1,5 @@
-import toml
+import tomllib
+import tomli_w
 from attrs import define, asdict
 #import attr
 import logging
@@ -45,20 +46,19 @@ class PiguiAppData(HasQtlets):
             # don't save the mock port: keep the one already in the file, if any.
             d.pop("port")
             try:
-                with open(filename, "r") as f:
-                    prev_port = toml.load(f).get("port")
-            except (OSError, toml.TomlDecodeError):
+                with open(filename, "rb") as f:
+                    prev_port = tomllib.load(f).get("port")
+            except (OSError, tomllib.TOMLDecodeError):
                 prev_port = None
             if prev_port is not None:
                 d = {"port": prev_port, **d}
-        with open(filename, "w") as f:
-            s = toml.dump(d, f)
-        return s
+        with open(filename, "wb") as f:
+            tomli_w.dump(d, f)
 
     @classmethod
     def from_toml(cls, filename):
-        with open(filename, "r") as f:
-            d = toml.load(f)
+        with open(filename, "rb") as f:
+            d = tomllib.load(f)
         d.setdefault("port", "Mock")
         return cls(**d)
 

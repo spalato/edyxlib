@@ -18,9 +18,10 @@ dependencies = [
     "PySide6",
     "qtlets",
     "attrs",
-    "toml",
+    "tomli-w",
     "typer",
     "rich",
+    "platformdirs",
 ]
 
 [project.scripts]

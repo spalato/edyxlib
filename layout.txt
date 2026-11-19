@@ -49,7 +49,7 @@ edyxlib/
 │   └── tests/
 │
 ├── pistage/                    # shared instrument: PI stage serial driver, mock
-│   ├── pyproject.toml          # depends on edyx (+ shared-instrument if needed)
+│   ├── pyproject.toml          # depends on pyserial only
 |   ├── uv.lock                 # per package lockfile
 │   ├── src/
 │   │   └── pistage/

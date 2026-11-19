@@ -1,16 +1,20 @@
 import os.path as pth
 import logging
+from pathlib import Path
 from typing import Optional
 
 import typer
 from PySide6 import QtWidgets
 from pigui.pigui import PIWidget, PiguiAppData, PiguiController
+from platformdirs import user_config_dir
 from rich.logging import RichHandler
 logging.basicConfig(level=logging.DEBUG, handlers=[RichHandler()], format="%(name)s:%(message)s")
 
 app = typer.Typer(help="Launch the FLUPS PI GUI")
 
 DEFAULT_CFG = dict(port="Mock", axis="0", scandir=-1, time_zero=0, autoconnect=True)
+PACKAGED_CFG = Path(__file__).with_name("pigui.toml")  # read-only seed for first run
+USER_CFG = Path(user_config_dir("edyx", appauthor=False)) / "pigui.toml"
 
 
 def _load_appdata(
@@ -57,11 +61,16 @@ def launch_pigui(
 
     logging.getLogger().setLevel(logging.DEBUG if verbose else logging.INFO)
 
+    # Transparent default: read the user's config if present (else the packaged
+    # defaults), always save to the user's config dir.
     if config_file is None:
-        config_file = pth.join(pth.dirname(__file__), "pigui.toml")
+        config_file = str(USER_CFG)
+        load_file = config_file if USER_CFG.exists() else str(PACKAGED_CFG)
+    else:
+        load_file = config_file
 
     appdata = _load_appdata(
-        config_file,
+        load_file,
         port=port,
         axis=axis,
         autoconnect=autoconnect,
@@ -79,7 +88,11 @@ def launch_pigui(
     logging.debug(f"app return code: {ret}")
     if ret == 0:
         logging.info(f"Saving config to: {config_file}")
-        appdata.to_toml(config_file)
+        try:
+            Path(config_file).parent.mkdir(parents=True, exist_ok=True)
+            appdata.to_toml(config_file)
+        except OSError as e:
+            logging.warning(f"Could not save config: {e}")
     return ret
 
 

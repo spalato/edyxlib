@@ -68,6 +68,15 @@ commit `7153608`). Package structure and install profiles: [uv_monorepo.md](uv_m
   meaning.
 - **Outputs.** Names start with the date (`250709_s4044.dat`), and files go next to
   the notebook. The header is a descriptive log: scans, parameters, calibration files.
+- **User settings.** Every package keeps per-user settings under one root,
+  `user_config_dir("edyx", appauthor=False)` from `platformdirs` (on Windows
+  `%LOCALAPPDATA%\edyx`). Flat: a package with one settings file uses `<pkg>.toml`
+  (`pigui.toml`); one that needs several uses a `<pkg>\` folder. Names always start
+  with the package name. Each package calls `platformdirs` itself, there is no shared
+  helper, so packages stay independent. The root is deliberately not roaming: ports and
+  similar settings belong to one machine. Settings are a convenience, created and
+  saved without questions. Anything that matters for the science (e.g. the t0 of the
+  stage) is recorded by the user in the lab book, never only in a settings file.
 
 ## edyx: the processing core
 
