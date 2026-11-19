@@ -20,6 +20,10 @@ dependencies = [
     "matplotlib",
     "numpy",
     "attrs",
+    # our standard distribution
+    "scistyles",
+    "colorcet",
+    "jupyterlab>=4.6.6",
 ]
 
 [project.urls]
