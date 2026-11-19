@@ -8,13 +8,15 @@ Lab code (edyx@HU) being reorganized from scattered conda-based code into a uv-m
 
 - `edyx/` (0.3.1): I/O, TA (`tana`) and FLUPS (`fana`) processing, calibration files (`edyx.calib`), matplotlib plots (`edyx.plot`), CLI scripts (`spectra-fit`; `flups` with `collect-asc`, `prep-fluo`, `help`; `collect-asc` alias).
 - `pyspan/` (0.4.0, requires `edyx>=0.3.1`): interactive decision tools (`Overlay`, `ScanInspector`, `T0Picker`, `Linear`), and the templates in `pyspan/examples/TA/` and `pyspan/examples/FLUPS/`.
-- `andor_c/`: legacy `.pgm` files. Instrument and experiment packages are still planned.
+- `pistage/` (0.1.0): PI stage serial driver, `MockPIStage`. Shared instrument, also used by packages not yet moved here.
+- `pigui/` (0.1.0): simple PySide6 utility GUI for the PI stage (`pigui` script). Depends on `pistage`.
+- `andor_c/`: legacy `.pgm` files. Other instrument and experiment packages are still planned.
 - Example data: `edyx/examples/<date>/`, one folder per day as in the lab (`250709` TA, `260605` FLUPS templates, `240619` FLUPS regression test): copies of lab data, unchanged. The notebooks are in `pyspan/examples/`.
 
 Read before structural work:
 - [design.md](design.md): principles, conventions (axes, argument order, masks, files), the edyx core, pyspan tools, calibration files, templates, open points. The reference for the TA, FLUPS, pyspan and calibration design.
 - [uv_monorepo.md](uv_monorepo.md): goals, user tiers, package structure, dependency direction, promotion policy, install profiles.
-- [layout.txt](layout.txt): planned directory tree (draft, includes open questions such as `pigui??`).
+- [layout.txt](layout.txt): planned directory tree (draft, includes open questions).
 
 ## Architecture (target)
 
