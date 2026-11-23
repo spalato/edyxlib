@@ -10,35 +10,39 @@ below. For more advanced installation instructions, see
 Before you start, use the windows store to install `Terminal` and `powershell`.
 Also install vscode (https://code.visualstudio.com/?_exp_home=e855cfac50).
 
-Install `uv` on the computer. `uv` is a fast and flexible installation manager.
-It takes care of installing python and all the required packages. For official
-instructions, see [official website](https://docs.astral.sh/uv/). To install
-in powershell, run:
+Then open `powershell` and run this single command:
+```powershell
+irm https://raw.githubusercontent.com/spalato/edyxlib/main/scripts/install.ps1 | iex
+```
+It sets the execution policy, installs `uv`, creates the `edyxenv` environment,
+installs `edyx` and `pyspan`, sets it as the default VSCode interpreter (an existing
+different setting is kept and reported), adds `edyxenv` to your PowerShell profiles (so the
+environment is active in every new terminal) and installs the VSCode Python and
+Jupyter extensions. Run it again at any time to update. Packages installed in
+editable mode are left alone. Open a new terminal when it is done. If it
+reports errors about creating the environment, windows defender (or similar)
+is likely blocking `uv` or python.
+
+<details><summary>Manual installation (what the script does)</summary>
+
+Install `uv` (see [official website](https://docs.astral.sh/uv/)) and restart the terminal:
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
-and restart the terminal.
-
-Create an environment for all the lab work; called `edyxenv`.
+Create the environment, add it to your powershell profile
+(`notepad $PROFILE`) and set `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`:
 ```powershell
 uv venv .venvs/edyxenv --python 3.14 --seed
-```
-Error messages at this point are likely due to windows defender and so on which
-prevent running uv, python, or both. 
-
-Add the environment to you powershell profile. TODO: automate... Add executionpolicy remotesigned.
-```powershell
 function edyxenv { & ~\.venvs\edyxenv\Scripts\activate.ps1 }
 edyxenv
 ```
-
-Add our main packages: `edyx` and `pyspan`. `edyx` contains most of the
-processing functions. `pyspan` contains a few extra interactive processing tools.
-Install the latest versions using:
+Add our main packages: `edyx` (most of the processing functions) and `pyspan`
+(interactive processing tools):
 ```powershell
 uv pip install --python ~\.venvs\edyxenv --upgrade `
   --index https://spalato.github.io/edyxlib/simple/ edyx pyspan
 ```
+</details>
 
 Configure VSCode: open it, trust the workspace if asked to, then in the left
 sidebar, click `Extensions` and install `python` and `Jupyter`, both by microsoft.
