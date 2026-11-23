@@ -24,17 +24,18 @@
     function Warn($msg) { Write-Host "!!  $msg" -ForegroundColor Yellow }
 
     # Text files are read and written with .NET: Windows PowerShell 5.1 cmdlets
-    # mangle non-ASCII text. An existing BOM is kept; new profiles get one
-    # (5.1 needs it to read UTF-8), new settings files do not.
-    function Test-Bom($f) {
-        if (-not (Test-Path $f)) { return $null }
+    # mangle non-ASCII text. An existing BOM is kept; a new file gets
+    # $defaultBom (profiles: yes, 5.1 needs it to read UTF-8; settings: no).
+    function Read-Text($f, $defaultBom) {
+        if (-not (Test-Path $f)) { return @('', $defaultBom) }
         $b = [IO.File]::ReadAllBytes($f)
-        return ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF)
-    }
-    function Read-Text($f) {
-        if (Test-Path $f) { return [IO.File]::ReadAllText($f) } else { return '' }
+        $bom = $b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF
+        $skip = if ($bom) { 3 } else { 0 }
+        return @([Text.Encoding]::UTF8.GetString($b, $skip, $b.Length - $skip), $bom)
     }
     function Write-Text($f, $text, $bom) {
+        $dir = Split-Path $f
+        if ($dir) { New-Item -ItemType Directory -Force $dir | Out-Null }
         [IO.File]::WriteAllText($f, $text, (New-Object Text.UTF8Encoding($bom)))
     }
 
@@ -43,12 +44,10 @@
         # The Process scope is ignored: it is not persistent.
         Step 'Execution policy'
         try {
-            $list = Get-ExecutionPolicy -List
-            $effective = 'Undefined'
-            foreach ($scope in 'MachinePolicy', 'UserPolicy', 'CurrentUser', 'LocalMachine') {
-                $v = ($list | Where-Object Scope -eq $scope).ExecutionPolicy
-                if ("$v" -ne 'Undefined') { $effective = "$v"; break }
-            }
+            # -List is in precedence order (MachinePolicy, UserPolicy, Process, CurrentUser, LocalMachine).
+            $effective = (Get-ExecutionPolicy -List |
+                Where-Object { $_.Scope -ne 'Process' -and "$($_.ExecutionPolicy)" -ne 'Undefined' } |
+                Select-Object -First 1).ExecutionPolicy
             if ($effective -in 'Unrestricted', 'Bypass', 'RemoteSigned') {
                 Write-Host "    already $effective, unchanged"
             } else {
@@ -82,15 +81,11 @@
         # 4. Packages (skip editable installs; upgrade only the others, so that
         # a dependency does not replace an editable package).
         Step 'Packages'
-        $sp = Join-Path $envDir 'Lib\site-packages'
+        $norm = { param($n) ($n -replace '[-_.]+', '-').ToLower() }
+        $editable = @(uv pip list --editable --python $envDir --format json -q | ConvertFrom-Json | ForEach-Object { & $norm $_.name })
         $todo = @()
         foreach ($p in $packages) {
-            $editable = $false
-            $du = Get-ChildItem $sp -Directory -Filter "$p-*.dist-info" -ErrorAction SilentlyContinue |
-                  ForEach-Object { Join-Path $_.FullName 'direct_url.json' } |
-                  Where-Object { Test-Path $_ } | Select-Object -First 1
-            if ($du -and ((Get-Content $du -Raw) -match '"editable"\s*:\s*true')) { $editable = $true }
-            if ($editable) { Warn "$p is installed in editable mode: skipped" } else { $todo += $p }
+            if ((& $norm $p) -in $editable) { Warn "$p is installed in editable mode: skipped" } else { $todo += $p }
         }
         if ($todo) {
             $up = $todo | ForEach-Object { '--upgrade-package'; $_ }
@@ -115,11 +110,7 @@
             $end
         ) -join "`r`n"
         foreach ($f in $paths) {
-            $dir = Split-Path $f
-            if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-            $bom = Test-Bom $f
-            if ($null -eq $bom) { $bom = $true }
-            $text = Read-Text $f
+            $text, $bom = Read-Text $f $true
             $pat = '(?s)' + [regex]::Escape($begin) + '.*?' + [regex]::Escape($end)
             if ($text -match $pat) { $text = [regex]::Replace($text, $pat, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $block }) }
             else { $text = $text.TrimEnd() + "`r`n`r`n" + $block + "`r`n" }
@@ -134,11 +125,9 @@
         $settings = if ($env:EDYX_VSCODE_SETTINGS) { $env:EDYX_VSCODE_SETTINGS } else { Join-Path $env:APPDATA 'Code\User\settings.json' }
         $py = Join-Path $envDir 'Scripts\python.exe'
         $line = '    "python.defaultInterpreterPath": "' + $py.Replace('\', '\\') + '"'
-        $bom = Test-Bom $settings
-        if ($null -eq $bom) { $bom = $false }
-        $text = Read-Text $settings
+        $text, $bom = Read-Text $settings $false
         # Ignore commented-out lines when looking for an existing setting.
-        $live = [regex]::Replace($text, '(?m)^\s*//.*$|/\*.*?\*/', '', 'Singleline')
+        $live = [regex]::Replace($text, '(?m)^\s*//.*$', '')
         if ($live -match '"python\.defaultInterpreterPath"\s*:\s*"([^"]*)"') {
             $current = $Matches[1].Replace('\\', '\')
             if ($current -ieq $py) { Write-Host '    already configured' }
@@ -146,28 +135,28 @@
         } elseif ($live -match '"python\.defaultInterpreterPath"') {
             Warn 'python.defaultInterpreterPath is present in an unexpected form: left unchanged.'
         } else {
-            $dir = Split-Path $settings
-            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-            $note = ''
+            # The opening brace may only be preceded by whitespace and full-line comments.
+            $open = [regex]::Match($text, '\A(?:\s|//[^\r\n]*)*\{')
             $new = $null
-            if ($live.Trim() -eq '' -or $live -match '^\s*\{\s*\}\s*$') {
-                $new = "{`r`n$line`r`n}`r`n"
-                if ($text.Trim() -ne '') { Copy-Item $settings "$settings.bak" -Force; $note = ' (backup: settings.json.bak)' }
-            } elseif ($live -match '^\s*\{') {
-                Copy-Item $settings "$settings.bak" -Force; $note = ' (backup: settings.json.bak)'
-                $new = [regex]::Replace($text, '\{', [System.Text.RegularExpressions.MatchEvaluator]{ param($m) "{`r`n$line," }, 1)
+            if ($text.Trim() -eq '') { $new = "{`r`n$line`r`n}`r`n" }
+            elseif ($open.Success) {
+                $sep = if ($live -match '^\s*\{\s*\}\s*$') { '' } else { ',' }
+                $new = $text.Insert($open.Index + $open.Length, "`r`n$line$sep")
             } else { Warn 'Unrecognised settings.json format: set the interpreter manually.' }
-            if ($new) { Write-Text $settings $new $bom; Write-Host "    set in $settings$note" }
+            if ($new) {
+                $note = ''
+                if ($text.Trim() -ne '') { Copy-Item $settings "$settings.bak" -Force; $note = ' (backup: settings.json.bak)' }
+                Write-Text $settings $new $bom
+                Write-Host "    set in $settings$note"
+            }
         }
 
         # 7. VSCode extensions
         Step 'VSCode extensions'
         if (Get-Command code -ErrorAction SilentlyContinue) {
             foreach ($x in 'ms-python.python', 'ms-toolsai.jupyter') {
-                # Windows PowerShell 5.1 turns native stderr into an error under 'Stop'.
-                $ErrorActionPreference = 'Continue'
-                code --install-extension $x --force 2>&1 | Out-Null
-                $ErrorActionPreference = 'Stop'
+                # Windows PowerShell 5.1 turns redirected native stderr into an error under 'Stop'.
+                & { $ErrorActionPreference = 'Continue'; code --install-extension $x --force 2>&1 | Out-Null }
                 if ($LASTEXITCODE) { Warn "Could not install $x (offline or blocked?). Install it from the VSCode Extensions panel." }
                 else { Write-Host "    $x" }
             }
