@@ -5,7 +5,10 @@ Code repository for edyx@HU.
 
 Welcome to the lab! To get started using our tools, follow the instructions
 below. For more advanced installation instructions, see
-[Installation](#installation) below. Before you start, install vscode (https://code.visualstudio.com/?_exp_home=e855cfac50)
+[Installation](#installation) below. 
+
+Before you start, use the windows store to install `Terminal` and `powershell`.
+Also install vscode (https://code.visualstudio.com/?_exp_home=e855cfac50).
 
 Install `uv` on the computer. `uv` is a fast and flexible installation manager.
 It takes care of installing python and all the required packages. For official
@@ -14,13 +17,16 @@ in powershell, run:
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
+and restart the terminal.
 
 Create an environment for all the lab work; called `edyxenv`.
 ```powershell
 uv venv .venvs/edyxenv --python 3.14 --seed
 ```
+Error messages at this point are likely due to windows defender and so on which
+prevent running uv, python, or both. 
 
-Add the environment to you powershell profile. TODO: automate...
+Add the environment to you powershell profile. TODO: automate... Add executionpolicy remotesigned.
 ```powershell
 function edyxenv { & ~\.venvs\edyxenv\Scripts\activate.ps1 }
 edyxenv
@@ -31,11 +37,18 @@ processing functions. `pyspan` contains a few extra interactive processing tools
 Install the latest versions using:
 ```powershell
 uv pip install --python ~\.venvs\edyxenv --upgrade `
-  --index https://spalato.github.io/edyxlib/simple/ edyx
+  --index https://spalato.github.io/edyxlib/simple/ edyx pyspan
 ```
 
+Configure VSCode: open it, trust the workspace if asked to, then in the left
+sidebar, click `Extensions` and install `python` and `Jupyter`, both by microsoft.
+
+To run the notebooks, copy them (TODO: from where?) to the data folder (ex: `_DATA\FLUPS\2026\260505`)
+Open the same folder in VSCode (File -> Open Folder). You can now open a notebook
+and try to run it. VSCode will ask for the interpreter path, select the one with
+`edyxenv` in the path.
+
 TODO: point to examples
-TODO: configure vscode: recommended extension. python jupyter
 
 
 # Installation
