@@ -15,7 +15,8 @@ Then open `powershell` and run this single command:
 irm https://raw.githubusercontent.com/spalato/edyxlib/main/scripts/install.ps1 | iex
 ```
 It sets the execution policy, installs `uv`, creates the `edyxenv` environment,
-installs `edyx` and `pyspan`, adds `edyxenv` to your PowerShell profiles (so the
+installs `edyx` and `pyspan`, sets it as the default VSCode interpreter (an existing
+different setting is kept and reported), adds `edyxenv` to your PowerShell profiles (so the
 environment is active in every new terminal) and installs the VSCode Python and
 Jupyter extensions. Run it again at any time to update. Packages installed in
 editable mode are left alone. Open a new terminal when it is done. If it

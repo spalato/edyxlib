@@ -96,7 +96,34 @@
             Write-Host "    $f"
         }
 
-        # 6. VSCode extensions
+        # 6. VSCode default interpreter (user settings; JSONC, so edited as text).
+        # Never overwrites a different value. Only a fallback: an interpreter
+        # selected in a workspace takes precedence.
+        Step 'VSCode default interpreter'
+        $settings = if ($env:EDYX_VSCODE_SETTINGS) { $env:EDYX_VSCODE_SETTINGS } else { Join-Path $env:APPDATA 'Code\User\settings.json' }
+        $py = Join-Path $envDir 'Scripts\python.exe'
+        $key = 'python.defaultInterpreterPath'
+        $line = '    "' + $key + '": "' + $py.Replace('\', '\\') + '",'
+        $text = if (Test-Path $settings) { Get-Content $settings -Raw } else { '' }
+        if ($null -eq $text) { $text = '' }
+        if ($text -match '"python\.defaultInterpreterPath"\s*:\s*"([^"]*)"') {
+            $current = $Matches[1].Replace('\\', '\')
+            if ($current -ieq $py) { Write-Host '    already configured' }
+            else { Warn "already set to $current (left unchanged). Change it in VSCode settings if you want edyxenv." }
+        } elseif ($text -match '"python\.defaultInterpreterPath"') {
+            Warn 'python.defaultInterpreterPath is present in an unexpected form: left unchanged.'
+        } else {
+            $dir = Split-Path $settings
+            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            if ($text.Trim() -eq '') { $new = "{`r`n$($line.TrimEnd(','))`r`n}`r`n" }
+            elseif ($text -match '^\s*\{') {
+                Copy-Item $settings "$settings.bak" -Force
+                $new = [regex]::Replace($text, '\{', [System.Text.RegularExpressions.MatchEvaluator]{ param($m) "{`r`n$line" }, 1)
+            } else { $new = $null; Warn "Unrecognised settings.json format: set the interpreter manually." }
+            if ($new) { Set-Content -Path $settings -Value $new -Encoding utf8; Write-Host "    set in $settings (an existing file was backed up as settings.json.bak)" }
+        }
+
+        # 7. VSCode extensions
         Step 'VSCode extensions'
         if (Get-Command code -ErrorAction SilentlyContinue) {
             foreach ($x in 'ms-python.python', 'ms-toolsai.jupyter') { code --install-extension $x --force | Out-Null }
@@ -105,7 +132,7 @@
 
         Write-Host ''
         Write-Host 'Done. Open a NEW terminal: `(edyxenv)` should appear in the prompt.' -ForegroundColor Green
-        Write-Host 'In VSCode, pick the interpreter with `edyxenv` in its path.'
+        Write-Host 'In VSCode, if a notebook asks for a kernel, pick the one with `edyxenv` in its path.'
     } catch {
         Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
     }
